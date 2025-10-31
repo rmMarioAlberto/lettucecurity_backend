@@ -1,0 +1,35 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prismaPostgres"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL_POSTGRE")
+}
+
+model sesion {
+  id_sesion        Int       @id(map: "pk_sesion") @default(autoincrement())
+  id_usuario       Int
+  token_acceso     String
+  token_refresh    String
+  ip_cliente       String?   @db.VarChar(45)
+  user_agent       String?
+  fecha_creacion   DateTime? @db.Timestamp(6)
+  fecha_expiracion DateTime  @db.Timestamp(6)
+  status           Int       @default(1)
+  usuario          usuario   @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade, onUpdate: NoAction, map: "fk_sesion_usuario")
+}
+
+model usuario {
+  id_usuario   Int      @id(map: "pk_usuario") @default(autoincrement())
+  username     String   @db.VarChar(50)
+  correo       String   @unique @db.VarChar(100)
+  contra       String   @db.VarChar(255)
+  nombre       String?  @db.VarChar(50)
+  apellido     String?  @db.VarChar(50)
+  tipo_usuario Int
+  status       Int?     @default(1)
+  sesion       sesion[]
+}
