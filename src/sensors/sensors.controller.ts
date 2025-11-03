@@ -1,8 +1,8 @@
 import { Controller, Get, HttpCode, HttpStatus, UseGuards } from "@nestjs/common";
 import { SensorsService } from "./sensors.service";
-import { AuthGuard } from "src/auth/guards/auth.guard";
-import { RolesGuard } from "src/auth/guards/roles.guard";
-import { Roles } from "src/auth/decorator/roles.decorator";
+import { AuthGuard } from "../auth/guards/auth.guard";
+import { RolesGuard } from "../auth/guards/roles.guard";
+import { Roles } from "../auth/decorator/roles.decorator";
 
 @Controller('/sensors')
 @UseGuards(AuthGuard,RolesGuard)
