@@ -3,7 +3,6 @@ import { PrismaServicePostgres } from '../prisma/prismaPosgres.service';
 import { AccessLoginDto } from './dto/access.dto';
 import * as bcrypt from 'bcrypt';
 import { TokensService } from '../tokens/tokens.service';
-import jwt from 'jsonwebtoken';
 
 @Injectable()
 export class AccessService {
