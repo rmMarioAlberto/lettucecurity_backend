@@ -2,18 +2,16 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   HttpCode,
   HttpStatus,
   Post,
   Req,
+  UnauthorizedException,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { AccessService } from './access.service';
-import {
-  AccessLoginDto,
-  AccessLogoutDto,
-  AccessRefreshTokenDto,
-} from './dto/access.dto';
+import { AccessLoginDto} from './dto/access.dto';
 
 @Controller('auth')
 export class AccessController {
@@ -40,8 +38,18 @@ export class AccessController {
 
   @Delete('logout')
   @HttpCode(HttpStatus.OK)
-  async logout(@Body() logoutDto: AccessLogoutDto) {
-    await this.accessService.logoutUser(logoutDto.refreshToken);
+  async logout(@Body() req: Request) {
+    const authHeader = req.headers['authorization'];
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new UnauthorizedException(
+        'Missing or invalid Authorization header',
+      );
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    await this.accessService.logoutUser(token);
 
     return {
       statusCode: HttpStatus.OK,
@@ -49,12 +57,19 @@ export class AccessController {
     };
   }
 
-  @Post('refreshToken')
+  @Get('refreshToken')
   @HttpCode(HttpStatus.OK)
-  async refreshToken(@Body() accessRefreshTokenDto: AccessRefreshTokenDto) {
-    const newTokens = await this.accessService.refreshToken(
-      accessRefreshTokenDto.refreshToken,
-    );
+  async refreshToken(@Req() req: Request) {
+    const authHeader = req.headers['authorization'];
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new UnauthorizedException(
+        'Missing or invalid Authorization header',
+      );
+    }
+
+    const token = authHeader.split(' ')[1];
+    const newTokens = await this.accessService.refreshToken(token);
 
     return {
       statusCode: HttpStatus.OK,

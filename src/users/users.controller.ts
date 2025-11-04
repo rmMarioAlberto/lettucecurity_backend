@@ -22,12 +22,11 @@ export class usersController {
   @Roles('admin')
   @HttpCode(HttpStatus.CREATED)
   async createNewUser(@Body() createUserDto: CreateUserDto) {
-    const user = await this.usersService.createNewUser(createUserDto);
+    await this.usersService.createNewUser(createUserDto);
     
     return {
       statusCode: HttpStatus.CREATED,
-      message: 'User created successfully',
-      user,
+      message: 'User created successfully'
     };
   }
 

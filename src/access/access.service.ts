@@ -58,23 +58,23 @@ export class AccessService {
     };
   }
 
-async logoutUser(refreshToken: string) {
-  await this.tokensService.validateRefreshToken(refreshToken);
+  async logoutUser(refreshToken: string) {
+    await this.tokensService.validateRefreshToken(refreshToken);
 
-  const result = await this.prismaPostgres.sesion.deleteMany({
-    where: { token_refresh: refreshToken, status: 1 },
-  });
+    const result = await this.prismaPostgres.sesion.deleteMany({
+      where: { token_refresh: refreshToken, status: 1 },
+    });
 
-  if (result.count === 0) {
-    throw new UnauthorizedException('Session already closed or not found');
+    if (result.count === 0) {
+      throw new UnauthorizedException('Session already closed or not found');
+    }
+
+    this.cleanSessiones().catch((error) => {
+      console.error('[Background] cleanSessiones failed:', error.message);
+    });
+
+    return { message: 'Session closed' };
   }
-
-  this.cleanSessiones().catch((error) => {
-    console.error('[Background] cleanSessiones failed:', error.message);
-  });
-
-  return { message: 'Session closed' };
-}
 
   async refreshToken(refreshToken: string) {
     const payload = await this.tokensService.validateRefreshToken(refreshToken);

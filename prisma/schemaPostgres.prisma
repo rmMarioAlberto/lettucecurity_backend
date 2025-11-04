@@ -1,6 +1,6 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prismaPostgres"
+  provider     = "prisma-client"
+  output       = "../src/generated/prismaPostgres"
   moduleFormat = "cjs"
 }
 
@@ -10,26 +10,92 @@ datasource db {
 }
 
 model sesion {
-  id_sesion        Int       @id(map: "pk_sesion") @default(autoincrement())
+  id_sesion        Int       @id @default(autoincrement())
   id_usuario       Int
   token_acceso     String
   token_refresh    String
   ip_cliente       String?   @db.VarChar(45)
   user_agent       String?
-  fecha_creacion   DateTime? @db.Timestamp(6)
+  fecha_creacion   DateTime? @default(now()) @db.Timestamp(6)
   fecha_expiracion DateTime  @db.Timestamp(6)
   status           Int       @default(1)
   usuario          usuario   @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade, onUpdate: NoAction, map: "fk_sesion_usuario")
 }
 
 model usuario {
-  id_usuario   Int      @id(map: "pk_usuario") @default(autoincrement())
-  username     String   @db.VarChar(50)
-  correo       String   @unique @db.VarChar(100)
-  contra       String   @db.VarChar(255)
-  nombre       String?  @db.VarChar(50)
-  apellido     String?  @db.VarChar(50)
+  id_usuario   Int       @id @default(autoincrement())
+  username     String    @db.VarChar(50)
+  correo       String    @unique @db.VarChar(100)
+  contra       String    @db.VarChar(255)
+  nombre       String?   @db.VarChar(50)
+  apellido     String?   @db.VarChar(50)
   tipo_usuario Int
-  status       Int?     @default(1)
+  status       Int       @default(1)
+  parcela      parcela[]
   sesion       sesion[]
+}
+
+model cultivo {
+  id_cultivo Int      @id @default(autoincrement())
+  nombre     String   @db.VarChar(100)
+  tipo       String?  @db.VarChar(50)
+  status     Int      @default(1)
+  parcela    parcela?
+}
+
+model iot {
+  id_iot          Int           @id @default(autoincrement())
+  descripcion     String
+  token           String        @unique
+  fecha_creacion  DateTime?     @default(now()) @db.Timestamp(6)
+  ultima_conexion DateTime?     @db.Timestamp(6)
+  status          Int           @default(1)
+  iot_parcela     iot_parcela[]
+  sensor_iot      sensor_iot[]
+}
+
+model iot_parcela {
+  id_iot_parcela      Int       @id @default(autoincrement())
+  id_parcela          Int
+  id_iot              Int
+  ubicacion_parcela_x Decimal?  @db.Decimal(10, 2)
+  ubicacion_parcela_y Decimal?  @db.Decimal(10, 2)
+  descripcion         String?
+  fecha_asignacion    DateTime? @default(now()) @db.Timestamp(6)
+  status              Int       @default(1)
+  iot                 iot       @relation(fields: [id_iot], references: [id_iot], onDelete: Cascade, onUpdate: NoAction, map: "fk_iot_dispositivo")
+}
+
+model parcela {
+  id_parcela  Int      @id @default(autoincrement())
+  id_usuario  Int
+  id_cultivo  Int?     @unique
+  nombre      String?  @db.VarChar(100)
+  descripcion String?
+  largo       Decimal? @db.Decimal(10, 2)
+  ancho       Decimal? @db.Decimal(10, 2)
+  latitud     Decimal? @db.Decimal(10, 6)
+  longitud    Decimal? @db.Decimal(10, 6)
+  status      Int      @default(1)
+  cultivo     cultivo? @relation(fields: [id_cultivo], references: [id_cultivo], map: "fk_parcela_cultivo")
+  usuario     usuario  @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade, onUpdate: NoAction, map: "fk_parcela_usuario")
+}
+
+model sensor {
+  id_sensor       Int          @id @default(autoincrement())
+  nombre          String       @db.VarChar(100)
+  tipo            String       @db.VarChar(50)
+  unidad_medicion String       @db.VarChar(20)
+  modelo          String?      @db.VarChar(50)
+  status          Int          @default(1)
+  sensor_iot      sensor_iot[]
+}
+
+model sensor_iot {
+  id_sensor_iot Int    @id @default(autoincrement())
+  id_sensor     Int
+  id_iot        Int
+  status        Int    @default(1)
+  sensor        sensor @relation(fields: [id_sensor], references: [id_sensor], onDelete: Cascade, onUpdate: NoAction, map: "fk_sensor")
+  iot           iot    @relation(fields: [id_iot], references: [id_iot], onDelete: Cascade, onUpdate: NoAction, map: "fk_sensor_iot")
 }
