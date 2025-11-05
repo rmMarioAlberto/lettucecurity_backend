@@ -2,6 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { config } from 'dotenv';
+import { AllExceptionsFilter } from "./utils/exceptions.filter";
+import { RateLimitMiddleware } from './utils/rate-limit.middleware';
 
 config();
 
@@ -18,7 +20,8 @@ async function bootstrap() {
       },
     }),
   );
-  
+  app.useGlobalFilters(new AllExceptionsFilter());
+  app.use(new RateLimitMiddleware().use);
   await app.listen(process.env.PORT ?? 3000);
   console.log(`API corriendo en http://localhost:${process.env.PORT ?? 3000}`);
 }

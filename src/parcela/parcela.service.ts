@@ -41,33 +41,22 @@ export class ParcelaService {
       longitud,
     } = createParcelaDto;
 
-    try {
-      const parcela = await this.prismaPostgres.parcela.create({
-        data: {
-          id_usuario: id_usuario,
-          id_cultivo: idCultivo,
-          nombre,
-          descripcion,
-          largo,
-          ancho,
-          latitud,
-          longitud,
-        },
-      });
+    const parcela = await this.prismaPostgres.parcela.create({
+      data: {
+        id_usuario,
+        id_cultivo: idCultivo,
+        nombre,
+        descripcion,
+        largo,
+        ancho,
+        latitud,
+        longitud,
+      },
+    });
 
-      return parcela;
-    } catch (error) {
-      if (error.code === 'P2003') {
-        throw new BadRequestException(
-          'El usuario o cultivo especificado no existe.',
-        );
-      }
-
-      throw new InternalServerErrorException(
-        'Error interno al crear la parcela.',
-      );
-    }
+    return parcela;
   }
+
   //editar parcela (admin)
   async editParcela(editParcelaDto: EditParcelaDto) {}
 }
