@@ -1,21 +1,19 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { PrismaServiceMongo } from '../prisma/prismaMongo.service';
+import { Injectable} from '@nestjs/common';
+import { PrismaServicePostgres } from 'src/prisma/prismaPosgres.service';
 
 @Injectable()
 export class SensorsService {
-  constructor(private prisma: PrismaServiceMongo) {}
+  constructor(private prisma: PrismaServicePostgres) {}
 
   async getAllSensors() {
-  try {
-    const sensors = await this.prisma.sensorType.findMany();
-    
-    return {
-      success: true,
-      message: 'Sensores obtenidos correctamente',
-      data: sensors,
-    };
-  } catch (error) {
-    throw new InternalServerErrorException('No se pudieron obtener los sensores');
+    const sensors = await this.prisma.sensor.findMany();
+
+    return sensors;
   }
-}
+
+  async getSensorById(id_sensor: number) {
+    const sensor = await this.prisma.sensor.findUnique({where : {id_sensor : id_sensor}})
+
+    return sensor;
+  }
 }

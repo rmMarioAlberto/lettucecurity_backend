@@ -1,48 +1,58 @@
 import { 
-    IsNotEmpty,
-    IsString,
-    IsNumber,
-    IsEmail
-} from "class-validator";
-
+  IsNotEmpty,
+  IsString,
+  IsNumber,
+  IsEmail,
+} from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateUserDto {
+  @ApiProperty({
+    example: 'mario123',
+    description: 'Nombre de usuario único del sistema',
+  })
+  @IsNotEmpty()
+  @IsString()
+  username: string;
 
-    @IsNotEmpty()
-    @IsString()
-    username: string;
+  @ApiProperty({
+    example: 'mario@gmail.com',
+    description: 'Correo electrónico del usuario',
+  })
+  @IsNotEmpty()
+  @IsEmail()
+  @IsString()
+  correo: string;
 
-    @IsNotEmpty()
-    @IsString()
-    @IsEmail()
-    correo: string
+  @ApiProperty({
+    example: '123456',
+    description: 'Contraseña del usuario ()',
+  })
+  @IsNotEmpty()
+  @IsString()
+  contra: string;
 
-    @IsNotEmpty()
-    @IsString()
-    contra: string;
+  @ApiProperty({
+    example: 'Mario',
+    description: 'Nombre del usuario',
+  })
+  @IsNotEmpty()
+  @IsString()
+  nombre: string;
 
-    @IsNotEmpty()
-    @IsString()
-    nombre: string;
+  @ApiProperty({
+    example: 'Ramírez',
+    description: 'Apellido del usuario',
+  })
+  @IsNotEmpty()
+  @IsString()
+  apellido: string;
 
-    @IsNotEmpty()
-    @IsString()
-    apellido: string;
-
-    @IsNotEmpty()
-    @IsNumber()
-    tipo_usuario: number;
+  @ApiProperty({
+    example: 1,
+    description: 'Tipo de usuario (2 = admin, 1 = usuario)',
+  })
+  @IsNotEmpty()
+  @IsNumber()
+  tipo_usuario: number;
 }
-
-
-// model usuario {
-//   id_usuario   Int      @id(map: "pk_usuario") @default(autoincrement())
-//   username     String   @db.VarChar(50)
-//   correo       String   @unique @db.VarChar(100)
-//   contra       String   @db.VarChar(255)
-//   nombre       String?  @db.VarChar(50)
-//   apellido     String?  @db.VarChar(50)
-//   tipo_usuario Int
-//   status       Int?     @default(1)
-//   sesion       sesion[]
-// }

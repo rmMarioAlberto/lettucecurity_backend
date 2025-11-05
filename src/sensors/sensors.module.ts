@@ -1,12 +1,12 @@
 import { Module } from "@nestjs/common";
 import { SensorsController } from "./sensors.controller";
 import { SensorsService } from "./sensors.service";
-import { PrismaMongoModule } from "../prisma/prismaMongo.module";
 import { TokensModule } from "../tokens/tokens.module";
 import { AuthModule } from "../auth/auth.module";
+import { PrismaPostgresModule } from "src/prisma/prismaPostgres.module";
 
 @Module({
-    imports: [PrismaMongoModule,AuthModule,TokensModule],
+    imports: [PrismaPostgresModule,AuthModule,TokensModule],
     controllers: [SensorsController],
     providers: [SensorsService],
 })

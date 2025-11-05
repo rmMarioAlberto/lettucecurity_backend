@@ -1,9 +1,13 @@
-import { IsNotEmpty, IsNumber, IsPositive } from "class-validator";
+import { ApiProperty } from '@nestjs/swagger';
+import { IsNotEmpty, IsNumber, IsPositive } from 'class-validator';
 
 export class GetCultivoDto {
-
-    @IsNotEmpty()
-    @IsNumber()
-    @IsPositive()
-    idCultivo : number
+  @ApiProperty({
+    example: 1,
+    description: 'ID numérico del cultivo a consultar',
+  })
+  @IsNotEmpty()
+  @IsNumber()
+  @IsPositive()
+  idCultivo: number;
 }
