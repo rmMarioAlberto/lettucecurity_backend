@@ -18,7 +18,6 @@ export class ParcelaService {
     return parcelas;
   }
 
-  //get todas las parcelas (user)
   async getParcelasUser(accessToken: string) {
     const tokenDecode = jwt.decode(accessToken);
 

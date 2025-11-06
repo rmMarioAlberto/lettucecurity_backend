@@ -44,26 +44,15 @@ model cultivo {
 }
 
 model iot {
-  id_iot          Int           @id @default(autoincrement())
-  descripcion     String
-  token           String        @unique
-  fecha_creacion  DateTime?     @default(now()) @db.Timestamp(6)
-  ultima_conexion DateTime?     @db.Timestamp(6)
-  status          Int           @default(1)
-  iot_parcela     iot_parcela[]
+  id_iot          Int          @id @default(autoincrement())
+  id_parcela      Int?
+  descripcion     String?
+  token           String?      @unique
+  fecha_creacion  DateTime?    @default(now()) @db.Timestamp(6)
+  ultima_conexion DateTime?    @db.Timestamp(6)
+  status          Int          @default(1)
+  parcela         parcela?     @relation(fields: [id_parcela], references: [id_parcela], onDelete: Cascade, onUpdate: NoAction, map: "fk_iot_parcela")
   sensor_iot      sensor_iot[]
-}
-
-model iot_parcela {
-  id_iot_parcela      Int       @id @default(autoincrement())
-  id_parcela          Int
-  id_iot              Int
-  ubicacion_parcela_x Decimal?  @db.Decimal(10, 2)
-  ubicacion_parcela_y Decimal?  @db.Decimal(10, 2)
-  descripcion         String?
-  fecha_asignacion    DateTime? @default(now()) @db.Timestamp(6)
-  status              Int       @default(1)
-  iot                 iot       @relation(fields: [id_iot], references: [id_iot], onDelete: Cascade, onUpdate: NoAction, map: "fk_iot_dispositivo")
 }
 
 model parcela {
@@ -77,6 +66,7 @@ model parcela {
   latitud     Decimal? @db.Decimal(10, 6)
   longitud    Decimal? @db.Decimal(10, 6)
   status      Int      @default(1)
+  iot         iot[]
   cultivo     cultivo? @relation(fields: [id_cultivo], references: [id_cultivo], map: "fk_parcela_cultivo")
   usuario     usuario  @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade, onUpdate: NoAction, map: "fk_parcela_usuario")
 }

@@ -163,3 +163,53 @@ CREATE TABLE cultivo (
     fecha_fin DATE,
     status INT NOT NULL DEFAULT 1
 );
+
+
+-- 1️⃣ Elimina la tabla intermedia (ya no se usará)
+DROP TABLE IF EXISTS iot_parcela CASCADE;
+
+-- 2️⃣ Elimina la tabla iot (para recrearla con el campo id_parcela)
+DROP TABLE IF EXISTS iot CASCADE;
+
+-- 3️⃣ (opcional) Si quieres asegurar integridad en cascada, primero elimina dependencias de iot (por ejemplo sensor_iot)
+-- DROP TABLE IF EXISTS sensor_iot CASCADE;
+
+
+CREATE TABLE iot (
+    id_iot SERIAL PRIMARY KEY,
+    id_parcela INT NOT NULL,
+    descripcion TEXT NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ultima_conexion TIMESTAMP,
+    status INT NOT NULL DEFAULT 1,
+    CONSTRAINT fk_iot_parcela FOREIGN KEY (id_parcela)
+        REFERENCES parcela (id_parcela)
+        ON DELETE CASCADE
+);
+
+
+
+-- 🌡️ Sensor de temperatura ambiental
+INSERT INTO sensor (nombre, tipo, unidad_medicion, modelo, status)
+VALUES ('Sensor de Temperatura Ambiental', 'Temperatura', '°C', 'DHT11', 1);
+
+-- 🌱 Sensor de temperatura del suelo
+INSERT INTO sensor (nombre, tipo, unidad_medicion, modelo, status)
+VALUES ('Sensor de Temperatura del Suelo', 'Temperatura Suelo', '°C', 'DS18B20', 1);
+
+-- 💧 Sensor de humedad ambiental
+INSERT INTO sensor (nombre, tipo, unidad_medicion, modelo, status)
+VALUES ('Sensor de Humedad Ambiental', 'Humedad', '%', 'DHT11', 1);
+
+-- ☀️ Sensor de luz (luminosidad)
+INSERT INTO sensor (nombre, tipo, unidad_medicion, modelo, status)
+VALUES ('Sensor de Luz', 'Luminosidad', 'lx', 'BH1750', 1);
+
+-- 👁️ Sensor PIR (movimiento)
+INSERT INTO sensor (nombre, tipo, unidad_medicion, modelo, status)
+VALUES ('Sensor de Movimiento PIR', 'Movimiento', 'Detección', 'HC-SR501', 1);
+
+-- 📸 Cámara (monitoreo visual)
+INSERT INTO sensor (nombre, tipo, unidad_medicion, modelo, status)
+VALUES ('Cámara de Monitoreo', 'Imagen', 'Fotograma', 'ESP32-CAM', 1);

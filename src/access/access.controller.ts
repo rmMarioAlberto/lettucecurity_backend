@@ -28,8 +28,7 @@ export class AccessController {
       example: {
         statusCode: 200,
         message: 'Login exitoso',
-        accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6...',
-        refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6...',
+        data : {accesstoken : '', refreshtoken : '', user : {}}
       },
     },
   })
@@ -44,7 +43,7 @@ export class AccessController {
     return {
       statusCode: HttpStatus.OK,
       message: 'Login exitoso',
-      ...result,
+      data : result,
     };
   }
 

@@ -39,7 +39,16 @@ export class AccessService {
     const now = new Date();
     const expirationDate = new Date(now.getTime() + 30 * 60000);
 
-    const createSession = await this.prismaPostgres.sesion.create({
+    const retrunUser = {
+      id_usuario : findUser.id_usuario,
+      username : findUser.username,
+      correo : findUser.correo,
+      nombre : findUser.nombre,
+      apellido : findUser.apellido,
+      tipo_usuario : findUser.tipo_usuario,
+    }
+
+    await this.prismaPostgres.sesion.create({
       data: {
         id_usuario: findUser.id_usuario,
         token_acceso: accessToken,
@@ -55,6 +64,7 @@ export class AccessService {
     return {
       accessToken,
       refreshToken,
+      user : retrunUser
     };
   }
 

@@ -11,3 +11,25 @@ export class GetSensorById {
   @IsPositive()
   id_sensor: number;
 }
+
+
+export class SensorAsignarIotDto {
+
+  @ApiProperty({
+    example: 1,
+    description: 'ID numérico del sensor a asignar',
+  })
+  @IsNotEmpty()
+  @IsNumber()
+  @IsPositive()
+  idSensor : number;
+
+  @ApiProperty({
+    example: 1,
+    description: 'ID numérico del iot a asignar',
+  })
+  @IsNotEmpty()
+  @IsNumber()
+  @IsPositive()
+  idIotDevice : number;
+}
