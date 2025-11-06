@@ -11,6 +11,18 @@ config();
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Configurar CORS global. Usa la variable de entorno CORS_ORIGINS (coma-separada)
+  // o por defecto permitir el frontend en 5173 durante desarrollo.
+  const corsOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',').map(s => s.trim())
+    : ['http://localhost:5173'];
+
+  app.enableCors({
+    origin: corsOrigins,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+  });
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true, // Elimina propiedades no definidas en el DTO
