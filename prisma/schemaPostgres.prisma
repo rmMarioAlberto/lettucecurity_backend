@@ -9,6 +9,61 @@ datasource db {
   url      = env("DATABASE_URL_POSTGRE")
 }
 
+model cultivo {
+  id_cultivo Int       @id @default(autoincrement())
+  nombre     String    @db.VarChar(100)
+  tipo       String?   @db.VarChar(50)
+  status     Int       @default(1)
+  parcela    parcela[]
+}
+
+model iot {
+  id_iot          Int          @id @default(autoincrement())
+  id_parcela      Int?
+  descripcion     String?
+  token           String?      @unique
+  fecha_creacion  DateTime?    @default(now()) @db.Timestamp(6)
+  ultima_conexion DateTime?    @db.Timestamp(6)
+  status          Int          @default(1)
+  parcela         parcela?     @relation(fields: [id_parcela], references: [id_parcela], onDelete: Cascade, onUpdate: NoAction, map: "fk_iot_parcela")
+  sensor_iot      sensor_iot[]
+}
+
+model parcela {
+  id_parcela  Int      @id @default(autoincrement())
+  id_usuario  Int
+  nombre      String?  @db.VarChar(100)
+  descripcion String?
+  largo       Decimal? @db.Decimal(10, 2)
+  ancho       Decimal? @db.Decimal(10, 2)
+  latitud     Decimal? @db.Decimal(10, 6)
+  longitud    Decimal? @db.Decimal(10, 6)
+  status      Int      @default(1)
+  id_cultivo  Int?
+  iot         iot[]
+  cultivo     cultivo? @relation(fields: [id_cultivo], references: [id_cultivo], onDelete: NoAction, onUpdate: NoAction, map: "fk_idcultivo")
+  usuario     usuario  @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade, onUpdate: NoAction, map: "fk_parcela_usuario")
+}
+
+model sensor {
+  id_sensor       Int          @id @default(autoincrement())
+  nombre          String       @db.VarChar(100)
+  tipo            String       @db.VarChar(50)
+  unidad_medicion String       @db.VarChar(20)
+  modelo          String?      @db.VarChar(50)
+  status          Int          @default(1)
+  sensor_iot      sensor_iot[]
+}
+
+model sensor_iot {
+  id_sensor_iot Int    @id @default(autoincrement())
+  id_sensor     Int
+  id_iot        Int
+  status        Int    @default(1)
+  sensor        sensor @relation(fields: [id_sensor], references: [id_sensor], onDelete: Cascade, onUpdate: NoAction, map: "fk_sensor")
+  iot           iot    @relation(fields: [id_iot], references: [id_iot], onDelete: Cascade, onUpdate: NoAction, map: "fk_sensor_iot")
+}
+
 model sesion {
   id_sesion        Int       @id @default(autoincrement())
   id_usuario       Int
@@ -33,59 +88,4 @@ model usuario {
   status       Int       @default(1)
   parcela      parcela[]
   sesion       sesion[]
-}
-
-model cultivo {
-  id_cultivo Int      @id @default(autoincrement())
-  nombre     String   @db.VarChar(100)
-  tipo       String?  @db.VarChar(50)
-  status     Int      @default(1)
-  parcela    parcela?
-}
-
-model iot {
-  id_iot          Int          @id @default(autoincrement())
-  id_parcela      Int?
-  descripcion     String?
-  token           String?      @unique
-  fecha_creacion  DateTime?    @default(now()) @db.Timestamp(6)
-  ultima_conexion DateTime?    @db.Timestamp(6)
-  status          Int          @default(1)
-  parcela         parcela?     @relation(fields: [id_parcela], references: [id_parcela], onDelete: Cascade, onUpdate: NoAction, map: "fk_iot_parcela")
-  sensor_iot      sensor_iot[]
-}
-
-model parcela {
-  id_parcela  Int      @id @default(autoincrement())
-  id_usuario  Int
-  id_cultivo  Int?     @unique
-  nombre      String?  @db.VarChar(100)
-  descripcion String?
-  largo       Decimal? @db.Decimal(10, 2)
-  ancho       Decimal? @db.Decimal(10, 2)
-  latitud     Decimal? @db.Decimal(10, 6)
-  longitud    Decimal? @db.Decimal(10, 6)
-  status      Int      @default(1)
-  iot         iot[]
-  cultivo     cultivo? @relation(fields: [id_cultivo], references: [id_cultivo], map: "fk_parcela_cultivo")
-  usuario     usuario  @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade, onUpdate: NoAction, map: "fk_parcela_usuario")
-}
-
-model sensor {
-  id_sensor       Int          @id @default(autoincrement())
-  nombre          String       @db.VarChar(100)
-  tipo            String       @db.VarChar(50)
-  unidad_medicion String       @db.VarChar(20)
-  modelo          String?      @db.VarChar(50)
-  status          Int          @default(1)
-  sensor_iot      sensor_iot[]
-}
-
-model sensor_iot {
-  id_sensor_iot Int    @id @default(autoincrement())
-  id_sensor     Int
-  id_iot        Int
-  status        Int    @default(1)
-  sensor        sensor @relation(fields: [id_sensor], references: [id_sensor], onDelete: Cascade, onUpdate: NoAction, map: "fk_sensor")
-  iot           iot    @relation(fields: [id_iot], references: [id_iot], onDelete: Cascade, onUpdate: NoAction, map: "fk_sensor_iot")
 }

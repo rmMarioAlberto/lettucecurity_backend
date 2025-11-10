@@ -1,10 +1,5 @@
 // src/auth/guards/roles.guard.ts
-import {
-  Injectable,
-  CanActivate,
-  ExecutionContext,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorator/roles.decorator';
 
@@ -21,10 +16,11 @@ export class RolesGuard implements CanActivate {
       return true;
     }
 
-    const { user } = context.switchToHttp().getRequest() as any;
+    const request = context.switchToHttp().getRequest();
+    const user = request.user; 
 
-    if (!user) {
-      throw new ForbiddenException('User not found in request');
+    if (!user || !user.tipoUsuario) {
+      throw new ForbiddenException('User not found or invalid in request');
     }
 
     const roleMap: Record<number, string> = {
@@ -34,6 +30,9 @@ export class RolesGuard implements CanActivate {
     };
 
     const userRole = roleMap[user.tipoUsuario];
+    if (!userRole) {
+      throw new ForbiddenException('Invalid user type');
+    }
 
     if (!requiredRoles.includes(userRole)) {
       throw new ForbiddenException('Access denied: insufficient permissions');

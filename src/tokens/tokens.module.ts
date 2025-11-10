@@ -1,10 +1,11 @@
 import { Module } from "@nestjs/common";
 import { PrismaPostgresModule } from "../prisma/prismaPostgres.module";
 import { TokensService } from "./tokens.service";
+import { TokensIotService } from "./tokensIot.service";
 
 @Module ({
     imports: [PrismaPostgresModule], 
-    providers: [TokensService],
-    exports: [TokensService]
+    providers: [TokensService,TokensIotService],
+    exports: [TokensService,TokensIotService]
 })
 export class TokensModule {}

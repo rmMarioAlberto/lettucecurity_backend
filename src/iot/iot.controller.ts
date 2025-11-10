@@ -11,13 +11,12 @@ import {
   ApiTags,
   ApiOperation,
   ApiResponse,
-  ApiBearerAuth,
 } from '@nestjs/swagger';
-import { AuthGuard } from 'src/auth/guards/auth.guard';
-import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { AuthGuard } from '../auth/guards/auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import { IotService } from './iot.service';
 import { AsignarParcelaDto, CreateIotDto, DeleteIot } from './dto/iotDto.dto';
-import { Roles } from 'src/auth/decorator/roles.decorator';
+import { Roles } from '../auth/decorator/roles.decorator';
 
 @ApiTags('IoT')
 @Controller('iot')
@@ -29,13 +28,14 @@ export class IotController {
   @Post('create')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Crear un nuevo dispositivo IoT' })
-  @ApiResponse({ status: 201, description: 'IoT creado exitosamente' })
+  @ApiResponse({ status: 201, description: 'IoT creado exitosamente'})
   @ApiResponse({ status: 400, description: 'Datos inválidos' })
   async createIot(@Body() dto: CreateIotDto) {
-    await this.iotService.createIot(dto);
+    const newIot = await this.iotService.createIot(dto);
     return {
       statusCode: HttpStatus.CREATED,
       message: 'IoT creado',
+      iot : newIot
     };
   }
 

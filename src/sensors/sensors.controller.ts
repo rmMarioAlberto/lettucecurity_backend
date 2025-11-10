@@ -12,7 +12,7 @@ import { SensorsService } from './sensors.service';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorator/roles.decorator';
-import { GetSensorById, SensorAsignarIotDto } from './dto/sensors.dto';
+import { GetSensorById, SensorAsignarMultiplesIotDto } from './dto/sensors.dto';
 
 @ApiTags('Sensores')
 @UseGuards(AuthGuard, RolesGuard)
@@ -129,8 +129,8 @@ export class SensorsController {
     status: 201,
     description: 'Sensor asignado correctamente al dispositivo IoT',
   })
-  async asignarSensorIot(@Body() dto: SensorAsignarIotDto) {
-    const result = await this.Sensor.asignarSensorIot(dto);
+  async asignarSensorIot(@Body() dto: SensorAsignarMultiplesIotDto) {
+    const result = await this.Sensor.asignarSensoresIot(dto);
 
     return {
       statusCode: HttpStatus.CREATED,

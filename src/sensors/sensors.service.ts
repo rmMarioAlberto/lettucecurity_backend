@@ -1,6 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaServicePostgres } from 'src/prisma/prismaPosgres.service';
-import { SensorAsignarIotDto } from './dto/sensors.dto';
+import { SensorAsignarMultiplesIotDto } from './dto/sensors.dto';
 
 @Injectable()
 export class SensorsService {
@@ -19,33 +19,69 @@ export class SensorsService {
     return sensor;
   }
 
-  async asignarSensorIot(dto: SensorAsignarIotDto) {
-    const { idSensor, idIotDevice } = dto;
+  async asignarSensoresIot(dto: SensorAsignarMultiplesIotDto) {
+    const { idSensores, idIotDevice } = dto;
 
-    const findSensor = await this.prisma.sensor.findUnique({
-      where: { id_sensor: idSensor, status: 1 },
-    });
     const findIot = await this.prisma.iot.findUnique({
       where: { id_iot: idIotDevice, status: 1 },
     });
 
-    if (!findSensor || !findIot) {
-      return {statuscode: HttpStatus.NOT_FOUND, message: 'Sensor o IoT no encontrado o inactivo'};
+    if (!findIot) {
+      return {
+        statusCode: HttpStatus.NOT_FOUND,
+        message: `Dispositivo IoT con ID ${idIotDevice} no encontrado o inactivo`,
+      };
     }
 
-    const findIsExist = await this.prisma.sensor_iot.findFirst({where: {id_sensor:idSensor,id_iot:idIotDevice}})
-
-    if(findIsExist){
-      return {statuscode: HttpStatus.CONFLICT, message: 'El sensor ya está asignado a este dispositivo IoT'};
-    }
-
-    const createRelation = await this.prisma.sensor_iot.create({
-      data: {
-        id_sensor: idSensor,
-        id_iot: idIotDevice
-      }
+    // Obtenemos los sensores activos que existan
+    const sensoresEncontrados = await this.prisma.sensor.findMany({
+      where: { id_sensor: { in: idSensores }, status: 1 },
     });
 
-    return createRelation;
+    // Validamos si faltan sensores
+    const sensoresNoEncontrados = idSensores.filter(
+      (id) => !sensoresEncontrados.some((s) => s.id_sensor === id),
+    );
+
+    if (sensoresNoEncontrados.length > 0) {
+      return {
+        statusCode: HttpStatus.NOT_FOUND,
+        message: `Los siguientes sensores no existen o están inactivos: ${sensoresNoEncontrados.join(', ')}`,
+      };
+    }
+
+    // Obtenemos las relaciones existentes para evitar duplicados
+    const relacionesExistentes = await this.prisma.sensor_iot.findMany({
+      where: {
+        id_sensor: { in: idSensores },
+        id_iot: idIotDevice,
+      },
+    });
+
+    const sensoresYaAsignados = relacionesExistentes.map((r) => r.id_sensor);
+    const sensoresNuevos = idSensores.filter(
+      (id) => !sensoresYaAsignados.includes(id),
+    );
+
+    if (sensoresNuevos.length === 0) {
+      return {
+        statusCode: HttpStatus.CONFLICT,
+        message: 'Todos los sensores ya están asignados a este dispositivo IoT',
+      };
+    }
+
+    // Creamos las nuevas relaciones
+    const nuevasRelaciones = await this.prisma.sensor_iot.createMany({
+      data: sensoresNuevos.map((id) => ({
+        id_sensor: id,
+        id_iot: idIotDevice,
+      })),
+    });
+
+    return {
+      statusCode: HttpStatus.CREATED,
+      message: 'Sensores asignados correctamente al dispositivo IoT',
+      asignados: sensoresNuevos,
+    };
   }
-} 
+}

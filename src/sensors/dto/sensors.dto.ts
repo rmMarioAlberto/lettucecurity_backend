@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsPositive } from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsNotEmpty, IsNumber, IsPositive } from 'class-validator';
 
 export class GetSensorById {
   @ApiProperty({
@@ -13,23 +13,24 @@ export class GetSensorById {
 }
 
 
-export class SensorAsignarIotDto {
+export class SensorAsignarMultiplesIotDto {
+  @ApiProperty({
+    example: [1, 2, 3],
+    description: 'IDs numéricos de los sensores a asignar',
+    isArray: true,
+  })
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsNumber({}, { each: true })
+  @IsPositive({ each: true })
+  idSensores: number[];
 
   @ApiProperty({
     example: 1,
-    description: 'ID numérico del sensor a asignar',
+    description: 'ID numérico del dispositivo IoT al que se asignarán los sensores',
   })
   @IsNotEmpty()
   @IsNumber()
   @IsPositive()
-  idSensor : number;
-
-  @ApiProperty({
-    example: 1,
-    description: 'ID numérico del iot a asignar',
-  })
-  @IsNotEmpty()
-  @IsNumber()
-  @IsPositive()
-  idIotDevice : number;
+  idIotDevice: number;
 }

@@ -5,8 +5,9 @@ import { AccessModule } from "./access/access.module";
 import { IotModule } from './iot/iot.module';
 import { ParcelaModule } from './parcela/parcela.module';
 import { ModuleCultivo } from './cultivo/cultivo.module';
-import { CorsMiddleware } from './utils/cors.middleware';
-import { RateLimitMiddleware } from './utils/rate-limit.middleware';
+// import { CorsMiddleware } from './utils/cors.middleware';
+// import { RateLimitMiddleware } from './utils/rate-limit.middleware';
+import { IotControlModule } from './iotControl/iotControl.module';
 
 @Module({
   imports: [
@@ -15,7 +16,8 @@ import { RateLimitMiddleware } from './utils/rate-limit.middleware';
     UserModule,
     IotModule,
     ParcelaModule,
-    ModuleCultivo
+    ModuleCultivo,
+    IotControlModule
   ],
 })
 export class AppModule {

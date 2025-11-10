@@ -5,6 +5,7 @@ import { config } from 'dotenv';
 import { AllExceptionsFilter } from './utils/exceptions.filter';
 import { RateLimitMiddleware } from './utils/rate-limit.middleware';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import * as bodyParser from 'body-parser';
 
 config();
 
@@ -14,7 +15,7 @@ async function bootstrap() {
   // Configurar CORS global. Usa la variable de entorno CORS_ORIGINS (coma-separada)
   // o por defecto permitir el frontend en 5173 durante desarrollo.
   const corsOrigins = process.env.CORS_ORIGINS
-    ? process.env.CORS_ORIGINS.split(',').map(s => s.trim())
+    ? process.env.CORS_ORIGINS.split(',').map((s) => s.trim())
     : ['http://localhost:5173'];
 
   app.enableCors({
@@ -42,6 +43,9 @@ async function bootstrap() {
     .build();
   const documentFactory = () => SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, documentFactory);
+
+  app.use(bodyParser.json({ limit: '20mb' }));
+  app.use(bodyParser.urlencoded({ limit: '20mb', extended: true }));
 
   app.useGlobalFilters(new AllExceptionsFilter());
   app.use(new RateLimitMiddleware().use);
