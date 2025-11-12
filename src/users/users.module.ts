@@ -2,8 +2,8 @@ import { Module } from "@nestjs/common";
 import { usersService } from "./users.service";
 import { usersController } from "./users.controller";
 import { PrismaPostgresModule } from "../prisma/prismaPostgres.module";
-import { AuthModule } from "src/auth/auth.module";
-import { TokensModule } from "src/tokens/tokens.module";
+import { AuthModule } from "../auth/auth.module";
+import { TokensModule } from "../tokens/tokens.module";
 
 @Module({
     controllers: [usersController],

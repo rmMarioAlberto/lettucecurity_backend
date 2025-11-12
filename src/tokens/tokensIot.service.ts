@@ -1,6 +1,6 @@
 import { HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
-import * as jwt from 'jsonwebtoken'; // Use * as jwt for better typing
-import { PrismaServicePostgres } from 'src/prisma/prismaPosgres.service';
+import * as jwt from 'jsonwebtoken'; 
+import { PrismaServicePostgres } from '../prisma/prismaPosgres.service';
 
 @Injectable()
 export class TokensIotService {

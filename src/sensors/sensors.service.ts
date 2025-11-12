@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { PrismaServicePostgres } from 'src/prisma/prismaPosgres.service';
+import { PrismaServicePostgres } from '../prisma/prismaPosgres.service';
 import { SensorAsignarMultiplesIotDto } from './dto/sensors.dto';
 
 @Injectable()

@@ -9,12 +9,12 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { Roles } from 'src/auth/decorator/roles.decorator';
-import { AuthGuard } from 'src/auth/guards/auth.guard';
-import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { ApiTags, ApiOperation, ApiResponse,  } from '@nestjs/swagger';
+import { Roles } from '../auth/decorator/roles.decorator';
+import { AuthGuard } from '../auth/guards/auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import { ParcelaService } from './parcela.service';
-import { CreateParcelaDto } from './dto/parcela.dto';
+import { CreateParcelaDto, GetDataParcela } from './dto/parcela.dto';
 
 @ApiTags('Parcelas')
 @Controller('parcela')
@@ -71,5 +71,17 @@ export class ParcelaController {
       statusCode: HttpStatus.CREATED,
       message: 'Parcela creada correctamente',
     };
+  }
+
+
+  @ApiOperation({summary : 'Recuperar info de una parcela'})
+  @ApiResponse({status : 200, description : 'Data recuperada correctamente'})
+  @Roles('admin', 'user')
+  @HttpCode(HttpStatus.OK)
+  @Get('dataParcela')
+  async getDataParcela(@Body() dto : GetDataParcela){
+    const data = await this.parcelasService.getDataParcela(dto)
+
+    return {statusCode : HttpStatus.OK, message : 'Data recuperada correctamente', data : data}
   }
 }

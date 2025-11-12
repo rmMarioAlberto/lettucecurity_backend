@@ -6,6 +6,7 @@ import {
   IsString,
   IsNumber,
   IsPositive,
+  Min,
 } from 'class-validator';
 
 export class CreateParcelaDto {
@@ -94,4 +95,13 @@ export class EditParcelaDto {
   @IsNumber()
   @IsOptional()
   longitud?: number;
+}
+
+export class GetDataParcela {
+
+  @ApiPropertyOptional({example : 1, description : 'ID de la parcela '})
+  @Min(1)
+  @IsNotEmpty()
+  @IsNumber()
+  idParcela : number
 }

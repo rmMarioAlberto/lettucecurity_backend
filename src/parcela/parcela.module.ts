@@ -1,13 +1,14 @@
 import { Module } from "@nestjs/common";
 import { ParcelaController } from "./parcela.controller";
 import { ParcelaService } from "./parcela.service";
-import { PrismaPostgresModule } from "src/prisma/prismaPostgres.module";
-import { AuthModule } from "src/auth/auth.module";
-import { TokensModule } from "src/tokens/tokens.module";
+import { PrismaPostgresModule } from "../prisma/prismaPostgres.module";
+import { AuthModule } from "../auth/auth.module";
+import { TokensModule } from "../tokens/tokens.module";
+import { PrismaMongoModule } from "src/prisma/prismaMongo.module";
 
 @Module({
     controllers : [ParcelaController],
     providers : [ParcelaService],
-    imports : [PrismaPostgresModule,AuthModule,TokensModule]
+    imports : [PrismaPostgresModule,PrismaMongoModule,AuthModule,TokensModule]
 })
 export class ParcelaModule {}

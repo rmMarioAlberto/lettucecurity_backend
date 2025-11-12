@@ -1,17 +1,20 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaServicePostgres } from '../prisma/prismaPosgres.service';
 import {
-  BadRequestException,
-  Injectable,
-  InternalServerErrorException,
-} from '@nestjs/common';
-import { PrismaServicePostgres } from 'src/prisma/prismaPosgres.service';
-import { CreateParcelaDto, EditParcelaDto } from './dto/parcela.dto';
+  CreateParcelaDto,
+  EditParcelaDto,
+  GetDataParcela,
+} from './dto/parcela.dto';
 import jwt from 'jsonwebtoken';
+import { PrismaServiceMongo } from 'src/prisma/prismaMongo.service';
 
 @Injectable()
 export class ParcelaService {
-  constructor(private prismaPostgres: PrismaServicePostgres) {}
+  constructor(
+    private readonly prismaPostgres: PrismaServicePostgres,
+    private readonly prismaMongo: PrismaServiceMongo,
+  ) {}
 
-  //get todas las parcelas (admin)
   async getParcelasAll() {
     const parcelas = await this.prismaPostgres.parcela.findMany();
 
@@ -56,6 +59,41 @@ export class ParcelaService {
     return parcela;
   }
 
-  //editar parcela (admin)
-  async editParcela(editParcelaDto: EditParcelaDto) {}
+  async getDataParcela(dto: GetDataParcela) {
+    const { idParcela } = dto;
+
+    const parcela = await this.prismaMongo.parcela_data.findUnique({
+      where: { id_parcela: idParcela },
+    });
+
+    if (!parcela) {
+      throw new NotFoundException(
+        `No se encontró la parcela con ID ${idParcela}`,
+      );
+    }
+
+    const iots = await this.prismaPostgres.iot.findMany({
+      where: { id_parcela: idParcela },
+    });
+
+    const data = parcela.iotReadings.map((iotReading) => {
+      const iotInfo = iots.find((i) => i.id_iot === iotReading.id_iot);
+
+      return {
+        id_iot: iotReading.id_iot,
+        descripcion: iotInfo?.descripcion,
+        hora: iotReading.hora,
+        imagen: iotReading.image_url,
+        sensores: iotReading.sensorReadings.map((sr) => ({
+          id_sensor: sr.id_sensor,
+          lectura: sr.lectura,
+        })),
+      };
+    });
+
+    return {
+      id_parcela: idParcela,
+      dispositivos: data,
+    };
+  }
 }

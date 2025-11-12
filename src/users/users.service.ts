@@ -1,5 +1,5 @@
 import { ConflictException, Injectable } from '@nestjs/common';
-import { PrismaServicePostgres } from 'src/prisma/prismaPosgres.service';
+import { PrismaServicePostgres } from '../prisma/prismaPosgres.service';
 import { CreateUserDto } from './dto/usersCreate.dto';
 import bcrypt from 'bcrypt';
 
