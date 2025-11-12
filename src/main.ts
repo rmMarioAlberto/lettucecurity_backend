@@ -16,7 +16,7 @@ async function bootstrap() {
   // o por defecto permitir el frontend en 5173 durante desarrollo.
   const corsOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(',').map((s) => s.trim())
-    : ['http://localhost:5173'];
+    : ["*"];
 
   app.enableCors({
     origin: corsOrigins,
