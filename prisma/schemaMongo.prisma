@@ -11,20 +11,23 @@ datasource db {
 }
 
 model parcela_data {
-  id_parcela     Int              @id @map("_id")
-  iotReadings    IotReading[]    
-  @@map("parcela_data") 
+  id_parcela  Int @id @map("_id")  
+  iotReadings IotReading[]         
+  @@map("parcela_data")
 }
 
 type IotReading {
-  id_iot         Int
-  hora           DateTime
-  image_url      String      
-  image_result   String?      
-  sensorReadings SensorReading[]  
+  id_iot         Int               
+  hora           DateTime          
+  image_url      String            
+  image_result   String?          
+  sensorReadings SensorReading[]   
+  overall_status String?           
 }
 
 type SensorReading {
-  id_sensor      Int
-  lectura        Float            
+  id_sensor  Int                  
+  lectura    Float                
+  status     String?             
+  deviation  Float?               
 }

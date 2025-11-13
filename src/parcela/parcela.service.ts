@@ -87,7 +87,6 @@ export class ParcelaService {
       select: {
         id_sensor: true,
         nombre: true,
-        tipo: true,
         unidad_medicion: true,
         modelo: true,
       },
@@ -109,7 +108,6 @@ export class ParcelaService {
             id_sensor: sr.id_sensor,
             lectura: sr.lectura,
             nombre: sensor?.nombre,
-            tipo: sensor?.tipo,
             unidad_medicion: sensor?.unidad_medicion,
             modelo: sensor?.modelo,
           };
