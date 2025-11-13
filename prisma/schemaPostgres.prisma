@@ -46,12 +46,13 @@ model parcela {
 }
 
 model sensor {
-  id_sensor       Int          @id @default(autoincrement())
-  nombre          String       @db.VarChar(100)
-  tipo            String       @db.VarChar(50)
-  unidad_medicion String       @db.VarChar(20)
-  modelo          String?      @db.VarChar(50)
-  status          Int          @default(1)
+  id_sensor       Int              @id @default(autoincrement())
+  nombre          String           @db.VarChar(100)
+  unidad_medicion String           @db.VarChar(20)
+  modelo          String?          @db.VarChar(50)
+  status          Int              @default(1)
+  id_category     Int?
+  sensor_category sensor_category? @relation(fields: [id_category], references: [id_category], onDelete: NoAction, onUpdate: NoAction, map: "categoria_id_fs")
   sensor_iot      sensor_iot[]
 }
 
@@ -88,4 +89,13 @@ model usuario {
   status       Int       @default(1)
   parcela      parcela[]
   sesion       sesion[]
+}
+
+model sensor_category {
+  id_category Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.VarChar(255)
+  unit        String   @db.VarChar(20)
+  status      Int      @default(1)
+  sensor      sensor[]
 }

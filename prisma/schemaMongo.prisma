@@ -1,13 +1,28 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prismaMongo"
+  provider     = "prisma-client"
+  output       = "../src/generated/prismaMongo"
   moduleFormat = "cjs"
-
 }
 
 datasource db {
   provider = "mongodb"
   url      = env("DATABASE_URL_MONGO")
+}
+
+type CultivoParamsParams {
+  category_id       Int
+  category_name     String
+  description       String
+  max               Int
+  min               Int
+  optimal           Int
+  unidad_medicion   String
+  warning_threshold Int
+}
+
+model cultivo_params {
+  id     Int                   @id @map("_id")
+  params CultivoParamsParams[]
 }
 
 model parcela_data {
@@ -22,9 +37,13 @@ type IotReading {
   image_url      String      
   image_result   String?      
   sensorReadings SensorReading[]  
+  overall_status String?
 }
 
 type SensorReading {
-  id_sensor      Int
-  lectura        Float            
+id_sensor Int
+lectura Float
+status String?    
+deviation Float?   
+message String?   
 }
