@@ -3,6 +3,7 @@ import { SubmitDataDto, SubmitIotDataDto } from './dto/iotControl.dto';
 import { PrismaServicePostgres } from '../prisma/prismaPosgres.service';
 import { PrismaServiceMongo } from '../prisma/prismaMongo.service';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import axios from 'axios';
 
 @Injectable()
 export class IotControlService {
@@ -11,7 +12,6 @@ export class IotControlService {
     private readonly prismaMongo: PrismaServiceMongo,
     private readonly cloudinary: CloudinaryService,
   ) {}
-
 
   async submitData(dto: SubmitDataDto) {
     const { idParcela, data } = dto;
@@ -24,7 +24,6 @@ export class IotControlService {
       throw new BadRequestException('La parcela no existe en el sistema');
     }
 
-    // Procesar cada iotData: subir imagen a Cloudinary y preparar datos para Mongo
     const iotReadingsToAdd = await Promise.all(
       data.map(async (iotData: SubmitIotDataDto) => {
         const { idIot, hora, image, dataSensores } = iotData;
@@ -37,12 +36,26 @@ export class IotControlService {
           throw new BadRequestException(`El IoT con id ${idIot} no existe`);
         }
 
-        let imageUrl = '';
-        if (image) {
-          const uploadResult = await this.cloudinary.uploadBase64(image);
-          imageUrl = uploadResult.secure_url; 
-        } else {
+        if (!image)
           throw new BadRequestException('Imagen requerida para la lectura IoT');
+
+        const uploadResult = await this.cloudinary.uploadBase64(image, {
+          parcelaId: idParcela,
+          public_id: `iot_${idIot}_${Date.now()}`,
+        });
+        const imageUrl = uploadResult.secure_url;
+
+        let imageResult = 'Desconocido';
+        try {
+          const response = await axios.post('http://127.0.0.1:8000/predict', {
+            image_url: imageUrl,
+          });
+          console.log(response);
+
+          imageResult =
+            response.data.result || JSON.stringify(response.data.prediction);
+        } catch (error) {
+          console.error('Error al clasificar la imagen:', error.message);
         }
 
         await Promise.all(
@@ -51,16 +64,18 @@ export class IotControlService {
               where: { id_sensor: sensor.idSensor },
             });
             if (!checkSensor) {
-              throw new BadRequestException(`El sensor con id ${sensor.idSensor} no existe`);
+              throw new BadRequestException(
+                `El sensor con id ${sensor.idSensor} no existe`,
+              );
             }
           }),
         );
 
-        // Preparar el objeto IotReading para embeber en Mongo
         return {
           id_iot: idIot,
-          hora: new Date(hora), 
+          hora: new Date(hora),
           image_url: imageUrl,
+          image_result: imageResult,
           sensorReadings: dataSensores.map((sensor) => ({
             id_sensor: sensor.idSensor,
             lectura: sensor.lectura,
@@ -69,20 +84,21 @@ export class IotControlService {
       }),
     );
 
-    // Usar upsert en Mongo para crear o agregar lecturas al documento de la parcela
     await this.prismaMongo.parcela_data.upsert({
       where: { id_parcela: idParcela },
       update: {
         iotReadings: {
-          push: iotReadingsToAdd, 
+          push: JSON.parse(JSON.stringify(iotReadingsToAdd)),
         },
       },
       create: {
         id_parcela: idParcela,
-        iotReadings: iotReadingsToAdd,
+        iotReadings: JSON.parse(JSON.stringify(iotReadingsToAdd)),
       },
     });
 
-    return { message: 'Datos enviados exitosamente' };
+    return {
+      message: 'Datos enviados exitosamente con clasificación de imagen',
+    };
   }
 }
