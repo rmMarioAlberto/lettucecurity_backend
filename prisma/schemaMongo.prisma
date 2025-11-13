@@ -19,7 +19,8 @@ model parcela_data {
 type IotReading {
   id_iot         Int
   hora           DateTime
-  image_url      String           
+  image_url      String      
+  image_result   String?      
   sensorReadings SensorReading[]  
 }
 
