@@ -78,7 +78,7 @@ export class ParcelaController {
   @ApiResponse({status : 200, description : 'Data recuperada correctamente'})
   @Roles('admin', 'user')
   @HttpCode(HttpStatus.OK)
-  @Get('dataParcela')
+  @Post('dataParcela')
   async getDataParcela(@Body() dto : GetDataParcela){
     const data = await this.parcelasService.getDataParcela(dto)
 
