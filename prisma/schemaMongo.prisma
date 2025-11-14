@@ -10,6 +10,22 @@ datasource db {
   url      = env("DATABASE_URL_MONGO")
 }
 
+type CultivoParamsParams {
+  category_id       Int
+  category_name     String
+  description       String
+  max               Int
+  min               Int
+  optimal           Int
+  unidad_medicion   String
+  warning_threshold Int
+}
+
+model cultivo_params {
+  id     Int                   @id @map("_id")
+  params CultivoParamsParams[]
+}
+
 model parcela_data {
   id_parcela  Int @id @map("_id")  
   iotReadings IotReading[]         
@@ -30,4 +46,21 @@ type SensorReading {
   lectura    Float                
   status     String?             
   deviation  Float?               
+}
+
+
+model chat_histories {
+id         String   @id @default(uuid()) @map("_id")  
+userId     Int                                      
+parcelaId  Int                                      
+messages   Message[]                                
+createdAt  DateTime @default(now())                 
+updatedAt  DateTime @updatedAt                      
+@@unique([userId, parcelaId])                       
+}
+
+type Message {
+role      String    
+content   String   
+timestamp DateTime  
 }

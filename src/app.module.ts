@@ -8,6 +8,7 @@ import { ModuleCultivo } from './cultivo/cultivo.module';
 // import { CorsMiddleware } from './utils/cors.middleware';
 // import { RateLimitMiddleware } from './utils/rate-limit.middleware';
 import { IotControlModule } from './iotControl/iotControl.module';
+import { ChatbotModule } from './chatbot/chatbot.module';
 
 @Module({
   imports: [
@@ -17,7 +18,8 @@ import { IotControlModule } from './iotControl/iotControl.module';
     IotModule,
     ParcelaModule,
     ModuleCultivo,
-    IotControlModule
+    IotControlModule,
+    ChatbotModule
   ],
 })
 export class AppModule {
