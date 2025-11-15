@@ -36,11 +36,6 @@ type CultivoParamsParams {
   warning_threshold Int
 }
 
-model cultivo_params {
-  id     Int                   @id @map("_id")
-  params CultivoParamsParams[]
-}
-
 model parcela_data {
   id_parcela  Int @id @map("_id")  
   iotReadings IotReading[]         
