@@ -25,17 +25,6 @@ model cultivo_params {
   params CultivoParamsParams[]
 }
 
-type CultivoParamsParams {
-  category_id       Int
-  category_name     String
-  description       String
-  max               Int
-  min               Int
-  optimal           Int
-  unidad_medicion   String
-  warning_threshold Int
-}
-
 model parcela_data {
   id_parcela  Int @id @map("_id")  
   iotReadings IotReading[]         
