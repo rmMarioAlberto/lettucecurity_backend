@@ -1,120 +1,140 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import * as jwt from 'jsonwebtoken';
-import * as dotenv from 'dotenv';
+import { JwtService } from '@nestjs/jwt';
 import { PrismaServicePostgres } from '../prisma/prismaPosgres.service';
-
-dotenv.config();
 
 @Injectable()
 export class TokensService {
-  private readonly accessSecret = process.env.JWT_ACCESS_TOKEN_CLAVE!;
   private readonly refreshSecret = process.env.JWT_REFRESH_TOKEN_CLAVE!;
-  constructor(private prismaPostgres: PrismaServicePostgres) {}
 
-  private signToken(payload: object, secret: string, expiresIn: string) {
-    if (!secret) {
-      throw new Error('JWT secret key is missing');
-    }
-
-    return jwt.sign(payload, secret, { expiresIn });
-  }
+  constructor(
+    private jwtService: JwtService,
+    private prismaPostgres: PrismaServicePostgres,
+  ) {}
 
   async createAccessToken(user: any) {
-    if (!user) {
-      throw new Error('User is required');
-    }
-
-    const payload = {
-      id: user.id_usuario,
-      username: user.nombre ?? 'Sin nombre',
-      tipoUsuario: user.tipo_usuario,
-    };
-
-    return this.signToken(payload, this.accessSecret, '15m');
+    if (!user) throw new Error('User is required');
+    const payload = { id: user.id_usuario, tipoUsuario: user.tipo_usuario };
+    return this.jwtService.sign(payload);
   }
 
   async createRefreshToken(user: any) {
-    if (!user) {
-      throw new Error('User is required');
+    if (!user) throw new Error('User is required');
+    const payload = { id: user.id_usuario, tipoUsuario: user.tipo_usuario };
+    return this.jwtService.sign(payload, {
+      secret: this.refreshSecret,
+      expiresIn: '30m',
+    });
+  }
+
+  async validateAccessToken(token: string): Promise<any> {
+    let payload: any;
+    try {
+      payload = this.jwtService.verify(token);
+    } catch (error) {
+      if (error.name === 'TokenExpiredError') {
+        throw new UnauthorizedException('Access token expired');
+      } else if (error.name === 'JsonWebTokenError') {
+        throw new UnauthorizedException('Invalid token signature');
+      }
+      throw new UnauthorizedException('Invalid access token');
     }
 
-    const payload = {
-      id: user.id_usuario,
-      username: user.nombre ?? 'Sin nombre',
-      tipoUsuario: user.tipo_usuario,
-    };
+    const session = await this.prismaPostgres.sesion.findFirst({
+      where: {
+        token_acceso: token,
+        id_usuario: payload.id,
+        status: 1,
+        revoked: false,
+      },
+    });
 
-    return this.signToken(payload, this.refreshSecret, '30m');
-  }
-
-async validateAccessToken(token: string): Promise<any> {
-  let payload: any;
-  
-  try {
-    payload = jwt.verify(token, this.accessSecret);
-  } catch (error) {
-    if (error.name === 'TokenExpiredError') {
-      throw new UnauthorizedException('Access token expired');
+    if (!session) {
+      throw new UnauthorizedException('Session not found or revoked');
     }
-    throw new UnauthorizedException('Invalid access token');
+
+    if (new Date(session.fecha_expiracion) <= new Date()) {
+      await this.prismaPostgres.sesion
+        .delete({ where: { id_sesion: session.id_sesion } })
+        .catch(() => {});
+      throw new UnauthorizedException('Session expired');
+    }
+
+    return payload;
   }
 
-  const session = await this.prismaPostgres.sesion.findFirst({
-    where: {
-      token_acceso: token,
-      id_usuario: payload.id,
-      status: 1,
-    },
-  });
+  async validateRefreshToken(
+    token: string,
+  ): Promise<{
+    payload: any;
+    newAccessToken: string;
+    newRefreshToken: string;
+  }> {
+    let payload: any;
+    try {
+      payload = this.jwtService.verify(token, { secret: this.refreshSecret });
+    } catch (error) {
+      if (error.name === 'TokenExpiredError') {
+        throw new UnauthorizedException('Refresh token expired');
+      } else if (error.name === 'JsonWebTokenError') {
+        throw new UnauthorizedException('Invalid token signature');
+      }
+      throw new UnauthorizedException('Invalid refresh token');
+    }
 
-  if (!session) {
-    throw new UnauthorizedException('Session not found');
-  }
+    const session = await this.prismaPostgres.sesion.findFirst({
+      where: {
+        token_refresh: token,
+        id_usuario: payload.id,
+        status: 1,
+        revoked: false,
+      },
+    });
 
-  if (new Date(session.fecha_expiracion) <= new Date()) {
-    await this.prismaPostgres.sesion.delete({
-      where: { id_sesion: session.id_sesion },
-    }).catch(() => {}); 
-    throw new UnauthorizedException('Session expired');
-  }
+    if (!session) {
+      throw new UnauthorizedException('Session not found or revoked');
+    }
 
-  return payload;
-}
-
-async validateRefreshToken(token: string): Promise<any> {
-  let payload: any;
-  
-  try {
-    payload = jwt.verify(token, this.refreshSecret);
-  } catch (error) {
-    if (error.name === 'TokenExpiredError') {
+    if (new Date(session.fecha_expiracion) <= new Date()) {
+      await this.prismaPostgres.sesion
+        .delete({ where: { id_sesion: session.id_sesion } })
+        .catch(() => {});
       throw new UnauthorizedException('Refresh token expired');
     }
-    throw new UnauthorizedException('Invalid refresh token');
-  }
 
-  const session = await this.prismaPostgres.sesion.findFirst({
-    where: {
-      token_refresh: token,
-      id_usuario: payload.id,
-      status: 1,
-    },
-  });
+    // NUEVO ACCESS TOKEN
+    const newAccessToken = this.jwtService.sign(
+      { id: payload.id, tipoUsuario: payload.tipoUsuario },
+      { expiresIn: '15m' },
+    );
 
-  if (!session) {
-    throw new UnauthorizedException('Session not found');
-  }
+    // NUEVO REFRESH TOKEN
+    const newRefreshToken = this.jwtService.sign(
+      { id: payload.id, tipoUsuario: payload.tipoUsuario },
+      { secret: this.refreshSecret, expiresIn: '30m' },
+    );
 
-  if (new Date(session.fecha_expiracion) <= new Date()) {
-    await this.prismaPostgres.sesion.delete({
+    // ACTUALIZAR TODO EN LA SESIÓN
+    await this.prismaPostgres.sesion.update({
       where: { id_sesion: session.id_sesion },
-    }).catch(() => {}); 
-    throw new UnauthorizedException('Refresh token expired');
+      data: {
+        token_acceso: newAccessToken,
+        token_refresh: newRefreshToken,
+        fecha_expiracion: new Date(Date.now() + 30 * 60 * 1000),
+      },
+    });
+
+    return { payload, newAccessToken, newRefreshToken };
   }
 
-  return payload;
-}
-
-
-
+  async revokeSession(userId: number, token: string) {
+    const session = await this.prismaPostgres.sesion.findFirst({
+      where: { id_usuario: userId, token_acceso: token },
+    });
+    if (session) {
+      await this.prismaPostgres.sesion.update({
+        where: { id_sesion: session.id_sesion },
+        data: { revoked: true, status: 0 },
+      });
+    }
+  }
 }

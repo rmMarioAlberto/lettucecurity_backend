@@ -2,17 +2,17 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaServicePostgres } from '../prisma/prismaPosgres.service';
 import {
   CreateParcelaDto,
-  EditParcelaDto,
   GetDataParcela,
 } from './dto/parcela.dto';
-import jwt from 'jsonwebtoken';
-import { PrismaServiceMongo } from 'src/prisma/prismaMongo.service';
+import { PrismaServiceMongo } from '../prisma/prismaMongo.service';
+import { AuthUtilsService } from '../utils/getUser.service';
 
 @Injectable()
 export class ParcelaService {
   constructor(
     private readonly prismaPostgres: PrismaServicePostgres,
     private readonly prismaMongo: PrismaServiceMongo,
+    private authUtils: AuthUtilsService,
   ) {}
 
   async getParcelasAll() {
@@ -22,12 +22,10 @@ export class ParcelaService {
   }
 
   async getParcelasUser(accessToken: string) {
-    const tokenDecode = jwt.decode(accessToken);
-
-    const parcelas = this.prismaPostgres.parcela.findMany({
-      where: { id_usuario: tokenDecode.id },
+    const userId = this.authUtils.getUserIdFromToken(accessToken); 
+    const parcelas = await this.prismaPostgres.parcela.findMany({
+      where: { id_usuario: userId },
     });
-
     return parcelas;
   }
 
@@ -76,11 +74,13 @@ export class ParcelaService {
       where: { id_parcela: idParcela },
     });
 
-    const uniqueSensorIds = [...new Set(
-      parcela.iotReadings.flatMap((iotReading) =>
-        iotReading.sensorReadings.map((sr) => sr.id_sensor)
-      )
-    )];
+    const uniqueSensorIds = [
+      ...new Set(
+        parcela.iotReadings.flatMap((iotReading) =>
+          iotReading.sensorReadings.map((sr) => sr.id_sensor),
+        ),
+      ),
+    ];
 
     const sensors = await this.prismaPostgres.sensor.findMany({
       where: { id_sensor: { in: uniqueSensorIds } },
@@ -120,6 +120,4 @@ export class ParcelaService {
       dispositivos: data,
     };
   }
-
-
 }

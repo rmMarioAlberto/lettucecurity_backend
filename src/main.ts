@@ -6,6 +6,7 @@ import { AllExceptionsFilter } from './utils/exceptions.filter';
 import { RateLimitMiddleware } from './utils/rate-limit.middleware';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as bodyParser from 'body-parser';
+import cookieParser from 'cookie-parser';
 
 config();
 
@@ -16,7 +17,7 @@ async function bootstrap() {
   // o por defecto permitir el frontend en 5173 durante desarrollo.
   const corsOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(',').map((s) => s.trim())
-    : ["*"];
+    : ['*'];
 
   app.enableCors({
     origin: corsOrigins,
@@ -46,6 +47,8 @@ async function bootstrap() {
 
   app.use(bodyParser.json({ limit: '20mb' }));
   app.use(bodyParser.urlencoded({ limit: '20mb', extended: true }));
+
+  app.use(cookieParser());
 
   app.useGlobalFilters(new AllExceptionsFilter());
   app.use(new RateLimitMiddleware().use);

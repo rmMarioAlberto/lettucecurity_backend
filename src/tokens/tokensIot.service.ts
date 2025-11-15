@@ -1,10 +1,14 @@
 import { HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
-import * as jwt from 'jsonwebtoken'; 
+import { JwtService } from '@nestjs/jwt';  
 import { PrismaServicePostgres } from '../prisma/prismaPosgres.service';
 
 @Injectable()
 export class TokensIotService {
-  constructor(private readonly prismaPostgres: PrismaServicePostgres) {}
+  private readonly iotSecret = process.env.JWT_SECRET_KEY_IOT!;  
+  constructor(
+    private readonly prismaPostgres: PrismaServicePostgres,
+    private readonly jwtService: JwtService,  
+  ) {}
 
   async generateTokenIot(id_iot: number) {
     if (!id_iot) {
@@ -17,10 +21,9 @@ export class TokensIotService {
     if (!iot) {
       return { statusCode: HttpStatus.NOT_FOUND, message: 'IoT no encontrado' };
     }
-    const jwtToken = jwt.sign(
+    const jwtToken = this.jwtService.sign(
       { id_iot, tipoUsuario: 3 },
-      process.env.JWT_SECRET_KEY_IOT,
-      { expiresIn: '365d' },
+      { secret: this.iotSecret, expiresIn: '365d' },  
     );
     return { statusCode: HttpStatus.OK, token: jwtToken };
   }
@@ -30,7 +33,7 @@ export class TokensIotService {
       throw new UnauthorizedException('Token no proporcionado');
     }
     try {
-      const payload = jwt.verify(token, process.env.JWT_SECRET_KEY_IOT) as {
+      const payload = this.jwtService.verify(token, { secret: this.iotSecret }) as {
         id_iot: number;
       };
       const findToken = await this.prismaPostgres.iot.findUnique({

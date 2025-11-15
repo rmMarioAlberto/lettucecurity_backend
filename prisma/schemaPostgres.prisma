@@ -46,14 +46,14 @@ model parcela {
 }
 
 model sensor {
-  id_sensor       Int @id @default(autoincrement()) 
-  nombre          String @db.VarChar(100)            
-  unidad_medicion String @db.VarChar(20)             
-  modelo          String? @db.VarChar(50)            
-  status          Int @default(1)                   
-  id_category     Int?                               
-  category        sensor_category? @relation(fields: [id_category], references: [id_category], onDelete: SetNull, onUpdate: Cascade)  
-  sensor_iot      sensor_iot[]                       
+  id_sensor       Int              @id @default(autoincrement())
+  nombre          String           @db.VarChar(100)
+  unidad_medicion String           @db.VarChar(20)
+  modelo          String?          @db.VarChar(50)
+  status          Int              @default(1)
+  id_category     Int?
+  category        sensor_category? @relation(fields: [id_category], references: [id_category], onDelete: NoAction, onUpdate: NoAction, map: "categoria_id_fs")
+  sensor_iot      sensor_iot[]
 }
 
 model sensor_iot {
@@ -75,6 +75,7 @@ model sesion {
   fecha_creacion   DateTime? @default(now()) @db.Timestamp(6)
   fecha_expiracion DateTime  @db.Timestamp(6)
   status           Int       @default(1)
+  revoked          Boolean?  @default(false)
   usuario          usuario   @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade, onUpdate: NoAction, map: "fk_sesion_usuario")
 }
 
@@ -92,10 +93,10 @@ model usuario {
 }
 
 model sensor_category {
-  id_category Int @id @default(autoincrement()) 
-  name        String @db.VarChar(100) @unique    
-  description String? @db.VarChar(255)           
-  unit        String @db.VarChar(20)             
-  status      Int @default(1)                    
-  sensors     sensor[]                         
+  id_category Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.VarChar(255)
+  unit        String   @db.VarChar(20)
+  status      Int      @default(1)
+  sensors     sensor[]
 }

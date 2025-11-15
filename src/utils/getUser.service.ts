@@ -1,26 +1,22 @@
-import { UnauthorizedException } from '@nestjs/common';
-import * as jwt from 'jsonwebtoken';
-import { Request } from 'express';  // Asumiendo Express; ajusta si usas otro framework
-
-/**
- * Función para extraer el ID del usuario del header de autorización (JWT).
- * @param req El objeto Request de Express (o similar) que contiene los headers.
- * @returns El ID del usuario decodificado del JWT.
- * @throws UnauthorizedException si el header es inválido o falta.
- */
-export function getUserIdFromAuth(req: Request): number {
-  const authHeader = req.headers['authorization'];
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw new UnauthorizedException('Missing or invalid Authorization header');
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+@Injectable() 
+export class AuthUtilsService {
+  constructor(private jwtService: JwtService) {} 
+  /**
+Función para extraer el ID del usuario de un access token.
+@param token El access token JWT.
+@returns El ID del usuario decodificado.
+@throws UnauthorizedException si el token es inválido o falta ID.
+*/
+  getUserIdFromToken(token: string): number {
+    if (!token) {
+      throw new UnauthorizedException('Missing token');
+    }
+    const decoded = this.jwtService.decode(token); 
+    if (!decoded || typeof decoded !== 'object' || !decoded.id) {
+      throw new UnauthorizedException('Invalid token or missing user ID');
+    }
+    return decoded.id;
   }
-
-  const token = authHeader.split(' ')[1];
-  const decoded = jwt.decode(token) as any;  
-
-  if (!decoded || !decoded.id) {
-    throw new UnauthorizedException('Invalid token or missing user ID');
-  }
-
-  return decoded.id;  
 }

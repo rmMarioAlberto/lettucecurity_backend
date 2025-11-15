@@ -3,7 +3,6 @@ import { PrismaServicePostgres } from '../prisma/prismaPosgres.service';
 import { AccessLoginDto } from './dto/access.dto';
 import * as bcrypt from 'bcrypt';
 import { TokensService } from '../tokens/tokens.service';
-
 @Injectable()
 export class AccessService {
   constructor(
@@ -19,35 +18,20 @@ export class AccessService {
     const findUser = await this.prismaPostgres.usuario.findUnique({
       where: { correo: userLogin.correo },
     });
-
     if (!findUser) {
       throw new UnauthorizedException('Credenciales inválidas');
     }
-
     const isPasswordValid = await bcrypt.compare(
       userLogin.contra,
       findUser.contra,
     );
-
     if (!isPasswordValid) {
       throw new UnauthorizedException('Credenciales inválidas');
     }
-
     const accessToken = await this.tokensService.createAccessToken(findUser);
     const refreshToken = await this.tokensService.createRefreshToken(findUser);
-
     const now = new Date();
     const expirationDate = new Date(now.getTime() + 30 * 60000);
-
-    const retrunUser = {
-      id_usuario : findUser.id_usuario,
-      username : findUser.username,
-      correo : findUser.correo,
-      nombre : findUser.nombre,
-      apellido : findUser.apellido,
-      tipo_usuario : findUser.tipo_usuario,
-    }
-
     await this.prismaPostgres.sesion.create({
       data: {
         id_usuario: findUser.id_usuario,
@@ -58,59 +42,41 @@ export class AccessService {
         fecha_creacion: now,
         fecha_expiracion: expirationDate,
         status: 1,
+        revoked: false,
       },
     });
-
+    const returnUser = {
+      id_usuario: findUser.id_usuario,
+      username: findUser.username,
+      correo: findUser.correo,
+      nombre: findUser.nombre,
+      apellido: findUser.apellido,
+      tipo_usuario: findUser.tipo_usuario,
+    };
     return {
       accessToken,
       refreshToken,
-      user : retrunUser
+      user: returnUser,
     };
   }
 
-  async logoutUser(refreshToken: string) {
-    await this.tokensService.validateRefreshToken(refreshToken);
-
-    const result = await this.prismaPostgres.sesion.deleteMany({
-      where: { token_refresh: refreshToken, status: 1 },
-    });
-
-    if (result.count === 0) {
-      throw new UnauthorizedException('Session already closed or not found');
+  async logoutUser(token: string) {
+    let payload;
+    try {
+      payload = await this.tokensService.validateAccessToken(token);
+    } catch {
+      const refreshResult =
+        await this.tokensService.validateRefreshToken(token);
+      payload = refreshResult.payload;
     }
-
-    this.cleanSessiones().catch((error) => {
-      console.error('[Background] cleanSessiones failed:', error.message);
-    });
-
+    // Revoca sesión
+    await this.tokensService.revokeSession(payload.id, token);
     return { message: 'Session closed' };
   }
 
   async refreshToken(refreshToken: string) {
-    const payload = await this.tokensService.validateRefreshToken(refreshToken);
-
-    const user = await this.prismaPostgres.usuario.findFirst({
-      where: { id_usuario: payload.id },
-    });
-
-    if (!user) {
-      throw new UnauthorizedException('User not found');
-    }
-
-    const newAccessToken = await this.tokensService.createAccessToken(user);
-    const newRefreshToken = await this.tokensService.createRefreshToken(user);
-
-    await this.prismaPostgres.sesion.updateMany({
-      where: {
-        token_refresh: refreshToken,
-        id_usuario: user.id_usuario,
-      },
-      data: {
-        token_acceso: newAccessToken,
-        token_refresh: newRefreshToken,
-        fecha_expiracion: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-    });
+    const { payload, newAccessToken, newRefreshToken } =
+      await this.tokensService.validateRefreshToken(refreshToken);
 
     return {
       accessToken: newAccessToken,
@@ -121,13 +87,11 @@ export class AccessService {
   async cleanSessiones() {
     try {
       const now = new Date();
-
       const deletedSessions = await this.prismaPostgres.sesion.deleteMany({
         where: {
           AND: [{ status: 1 }, { fecha_expiracion: { lte: now } }],
         },
       });
-
       console.log(`Sesiones limpiadas: ${deletedSessions.count}`);
       return deletedSessions;
     } catch (error) {

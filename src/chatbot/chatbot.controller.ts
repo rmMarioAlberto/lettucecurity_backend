@@ -5,28 +5,26 @@ import {
   HttpStatus,
   Post,
   Req,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import express from 'express';
 import { ChatbotService } from './chatbot.service';
 import { ChatBotMessage, GetChatDto } from './dto/chatbot.dto';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { AuthGuard } from 'src/auth/guards/auth.guard';
 import { Roles } from 'src/auth/decorator/roles.decorator';
-import { getUserIdFromAuth } from '../utils/getUser.service';
+import { AuthUtilsService } from '../utils/getUser.service';
 
-import {
-  ApiBody,
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 @UseGuards(AuthGuard, RolesGuard)
 @ApiTags('Chatbot')
 @Controller('chat')
 export class ChatbotController {
-  constructor(private readonly chatbotService: ChatbotService) {}
+  constructor(
+    private authUtils: AuthUtilsService,
+    private readonly chatbotService: ChatbotService,
+  ) {}
 
   @Post('chatbot')
   @Roles('admin', 'user')
@@ -59,9 +57,21 @@ export class ChatbotController {
       },
     },
   })
-  async sendMessage(@Body() dto: ChatBotMessage, @Req() req: express.Request) {
+  async sendMessage(@Body() dto: ChatBotMessage, @Req() req: Request) {
     const { idParcela, message } = dto;
-    const idUser = getUserIdFromAuth(req);
+
+    const authHeader = req.headers['authorization'];
+    
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new UnauthorizedException(
+        'Missing or invalid Authorization header',
+      );
+    }
+    const token = authHeader.split(' ')[1];
+    
+
+    const idUser = this.authUtils.getUserIdFromToken(token);
 
     const reply = await this.chatbotService.handleChatMessage(
       idUser,
@@ -115,11 +125,19 @@ export class ChatbotController {
       },
     },
   })
-  async getHistorialChat(
-    @Body() dto: GetChatDto,
-    @Req() req: express.Request,
-  ) {
-    const idUser = getUserIdFromAuth(req);
+  async getHistorialChat(@Body() dto: GetChatDto,@Req() req: Request) {
+
+    const authHeader = req.headers['authorization'];
+    
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new UnauthorizedException(
+        'Missing or invalid Authorization header',
+      );
+    }
+    const token = authHeader.split(' ')[1];
+
+    const idUser = this.authUtils.getUserIdFromToken(token);
 
     const chat = await this.chatbotService.getChat(dto, idUser);
 
