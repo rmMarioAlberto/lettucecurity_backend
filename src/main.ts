@@ -11,10 +11,12 @@ import cookieParser from 'cookie-parser';
 config();
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // DESACTIVAR bodyParser interno de Nest
+  const app = await NestFactory.create(AppModule, {
+    bodyParser: false,
+  });
 
-  // Configurar CORS global. Usa la variable de entorno CORS_ORIGINS (coma-separada)
-  // o por defecto permitir el frontend en 5173 durante desarrollo.
+  // CORS
   const corsOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(',').map((s) => s.trim())
     : ['*'];
@@ -25,17 +27,26 @@ async function bootstrap() {
     credentials: true,
   });
 
+  // Activar body parser con límite
+  app.use(bodyParser.json({ limit: '20mb' }));
+  app.use(bodyParser.urlencoded({ limit: '20mb', extended: true }));
+
+  // cookies
+  app.use(cookieParser());
+
+  // Pipes
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // Elimina propiedades no definidas en el DTO
-      forbidNonWhitelisted: true, // Lanza error si hay propiedades extras
-      transform: true, // Transforma los tipos automáticamente
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
       transformOptions: {
-        enableImplicitConversion: true, // Convierte tipos implícitamente
+        enableImplicitConversion: true,
       },
     }),
   );
 
+  // Swagger
   const config = new DocumentBuilder()
     .setTitle('Lettucecurity API')
     .setDescription('API documentation for Lettucecurity application')
@@ -45,14 +56,12 @@ async function bootstrap() {
   const documentFactory = () => SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, documentFactory);
 
-  app.use(bodyParser.json({ limit: '20mb' }));
-  app.use(bodyParser.urlencoded({ limit: '20mb', extended: true }));
-
-  app.use(cookieParser());
-
+  // Filtros y rate limit
   app.useGlobalFilters(new AllExceptionsFilter());
   app.use(new RateLimitMiddleware().use);
+
   await app.listen(process.env.PORT ?? 3000);
   console.log(`API corriendo en http://localhost:${process.env.PORT ?? 3000}`);
 }
+
 bootstrap();
