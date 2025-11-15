@@ -26,6 +26,7 @@ export class ParcelaService {
     const parcelas = await this.prismaPostgres.parcela.findMany({
       where: { id_usuario: userId },
     });
+
     return parcelas;
   }
 
@@ -102,11 +103,16 @@ export class ParcelaService {
         descripcion: iotInfo?.descripcion,
         hora: iotReading.hora,
         imagen: iotReading.image_url,
+        image_result: iotReading.image_result,
+        overall_status: iotReading.overall_status,
         sensores: iotReading.sensorReadings.map((sr) => {
           const sensor = sensorMap.get(sr.id_sensor);
           return {
             id_sensor: sr.id_sensor,
             lectura: sr.lectura,
+            status: sr.status,
+            deviation: sr.deviation,
+            message: sr.message,
             nombre: sensor?.nombre,
             unidad_medicion: sensor?.unidad_medicion,
             modelo: sensor?.modelo,
