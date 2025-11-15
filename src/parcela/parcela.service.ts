@@ -94,6 +94,26 @@ export class ParcelaService {
 
     const sensorMap = new Map(sensors.map((s) => [s.id_sensor, s]));
 
+    const uniqueSensorIds = [
+      ...new Set(
+        parcela.iotReadings.flatMap((iotReading) =>
+          iotReading.sensorReadings.map((sr) => sr.id_sensor),
+        ),
+      ),
+    ];
+
+    const sensors = await this.prismaPostgres.sensor.findMany({
+      where: { id_sensor: { in: uniqueSensorIds } },
+      select: {
+        id_sensor: true,
+        nombre: true,
+        unidad_medicion: true,
+        modelo: true,
+      },
+    });
+
+    const sensorMap = new Map(sensors.map((s) => [s.id_sensor, s]));
+
     const data = parcela.iotReadings.map((iotReading) => {
       const iotInfo = iots.find((i) => i.id_iot === iotReading.id_iot);
 
@@ -107,6 +127,21 @@ export class ParcelaService {
           return {
             id_sensor: sr.id_sensor,
             lectura: sr.lectura,
+            nombre: sensor?.nombre,
+            unidad_medicion: sensor?.unidad_medicion,
+            modelo: sensor?.modelo,
+          };
+        }),
+        image_result: iotReading.image_result,
+        overall_status: iotReading.overall_status,
+        sensores: iotReading.sensorReadings.map((sr) => {
+          const sensor = sensorMap.get(sr.id_sensor);
+          return {
+            id_sensor: sr.id_sensor,
+            lectura: sr.lectura,
+            status: sr.status,
+            deviation: sr.deviation,
+            message: sr.message,
             nombre: sensor?.nombre,
             unidad_medicion: sensor?.unidad_medicion,
             modelo: sensor?.modelo,

@@ -24,6 +24,7 @@ export class CloudinaryService {
       let mimeType: string;
       let rawBase64 = base64;
 
+      // 🔹 Si viene como data:image/png;base64,...
       if (base64.startsWith('data:')) {
         const commaIndex = base64.indexOf(',');
         if (commaIndex === -1) {
@@ -38,29 +39,49 @@ export class CloudinaryService {
         }
         mimeType = mimeMatch[1];
       } else {
- 
+        // 🔹 Si es base64 “crudo” sin encabezado
         const buffer = Buffer.from(base64, 'base64');
-
-        if (buffer.length >= 8 &&
-            buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47 &&
-            buffer[4] === 0x0D && buffer[5] === 0x0A && buffer[6] === 0x1A && buffer[7] === 0x0A) {
+        if (
+          buffer.length >= 8 &&
+          buffer[0] === 0x89 &&
+          buffer[1] === 0x50 &&
+          buffer[2] === 0x4e &&
+          buffer[3] === 0x47
+        ) {
           mimeType = 'image/png';
-        } else if (buffer.length >= 3 && buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) {
+        } else if (
+          buffer.length >= 3 &&
+          buffer[0] === 0xff &&
+          buffer[1] === 0xd8 &&
+          buffer[2] === 0xff
+        ) {
           mimeType = 'image/jpeg';
         } else {
           throw new Error('Formato no soportado: solo PNG o JPG');
         }
       }
 
-      // Construir el data URI con el mime detectado/extraído
+      // 🔹 Construir el data URI correcto
       const dataUri = `data:${mimeType};base64,${rawBase64}`;
 
- 
+      // 🔹 Asignar defaults
       if (!options.resource_type) {
         options.resource_type = 'image';
       }
 
-      // Subir a Cloudinary
+      // 🔹 Si se pasa un id de parcela o algo similar, crea carpeta automáticamente
+      if (options.parcelaId) {
+        options.folder = `parcela_${options.parcelaId}`;
+        delete options.parcelaId;
+      }
+
+      // 🔹 Darle nombre automático al archivo
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      if (!options.public_id) {
+        options.public_id = `img_${timestamp}`;
+      }
+
+      // 🔹 Subir a Cloudinary
       const uploadResult = await this.v2.uploader.upload(dataUri, options);
       return uploadResult;
     } catch (error) {
