@@ -44,7 +44,8 @@ type SensorReading {
   id_sensor  Int                  
   lectura    Float                
   status     String?             
-  deviation  Float?               
+  deviation  Float?
+  message String?                 
 }
 
 
