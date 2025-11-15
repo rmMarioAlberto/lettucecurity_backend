@@ -64,7 +64,7 @@ export class IotControlService {
         let imageResult = 'Desconocido';
         try {
           const response = await axios.post('https://web-production-02772.up.railway.app/', {
-            image_url: imageUrl,
+            image: imageUrl,
           });
           console.log(response);
 
