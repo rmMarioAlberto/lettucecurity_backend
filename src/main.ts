@@ -16,16 +16,16 @@ async function bootstrap() {
     bodyParser: false,
   });
 
-  // CORS
-  const corsOrigins = process.env.CORS_ORIGINS
-    ? process.env.CORS_ORIGINS.split(',').map((s) => s.trim())
-    : ['*'];
+  // // CORS
+  // const corsOrigins = process.env.CORS_ORIGINS
+  //   ? process.env.CORS_ORIGINS.split(',').map((s) => s.trim())
+  //   : ['*'];
 
-  app.enableCors({
-    origin: corsOrigins,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true,
-  });
+  // app.enableCors({
+  //   origin: corsOrigins,
+  //   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  //   credentials: true,
+  // });
 
   // Activar body parser con límite
   app.use(bodyParser.json({ limit: '20mb' }));
