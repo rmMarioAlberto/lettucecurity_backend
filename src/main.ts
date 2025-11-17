@@ -8,6 +8,9 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 
+// IMPORTS NUEVOS
+import { CryptoInterceptor } from './crypto/crypto.interceptor';
+
 config();
 
 async function bootstrap() {
@@ -16,16 +19,21 @@ async function bootstrap() {
     bodyParser: false,
   });
 
-  // CORS
-  const corsOrigins = process.env.CORS_ORIGINS
-    ? process.env.CORS_ORIGINS.split(',').map((s) => s.trim())
-    : ['*'];
+  // === ACTIVAR INTERCEPTOR DE CIFRADO GLOBAL ===
+  const cryptoInterceptor = app.get(CryptoInterceptor);
+  app.useGlobalInterceptors(cryptoInterceptor);
+  // ============================================
 
-  app.enableCors({
-    origin: corsOrigins,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true,
-  });
+  // // CORS
+  // const corsOrigins = process.env.CORS_ORIGINS
+  //   ? process.env.CORS_ORIGINS.split(',').map((s) => s.trim())
+  //   : ['*'];
+
+  // app.enableCors({
+  //   origin: corsOrigins,
+  //   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  //   credentials: true,
+  // });
 
   // Activar body parser con límite
   app.use(bodyParser.json({ limit: '20mb' }));
@@ -34,7 +42,7 @@ async function bootstrap() {
   // cookies
   app.use(cookieParser());
 
-  // Pipes
+  // Pipes globales
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -53,11 +61,14 @@ async function bootstrap() {
     .setVersion('1.0')
     .addTag('lettucecurity')
     .build();
+    
   const documentFactory = () => SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, documentFactory);
 
-  // Filtros y rate limit
+  // Filtros globales
   app.useGlobalFilters(new AllExceptionsFilter());
+
+  // Rate limit
   app.use(new RateLimitMiddleware().use);
 
   await app.listen(process.env.PORT ?? 3000);

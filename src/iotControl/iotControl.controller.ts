@@ -12,9 +12,11 @@ import { SubmitDataDto } from './dto/iotControl.dto';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { AuthIotGuard } from '../auth/guards/authIot.guard';
 import { Roles } from '../auth/decorator/roles.decorator';
+import { SkipCrypto } from 'src/crypto/skip-crypto.decorator';
 
 @ApiTags('iot-control')
 @Controller('iot-control')
+@SkipCrypto()
 @UseGuards(AuthIotGuard, RolesGuard)
 @Roles('iot')
 export class IotControlController {

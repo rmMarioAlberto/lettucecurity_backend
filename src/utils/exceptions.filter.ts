@@ -29,9 +29,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
     }
 
     else if (exception instanceof PrismaClientKnownRequestError) {
-      errorCode = exception.code;
+      const prismaError = exception as PrismaClientKnownRequestError;
+      errorCode = prismaError.code;
 
-      switch (exception.code) {
+      switch (prismaError.code) {
         case 'P2002':
           status = HttpStatus.CONFLICT;
           message = 'Registro duplicado (violación de restricción única).';
@@ -49,7 +50,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
         default:
           status = HttpStatus.BAD_REQUEST;
-          message = `Error de base de datos (${exception.code}).`;
+          message = `Error de base de datos (${prismaError.code}).`;
           break;
       }
     }
