@@ -12,7 +12,7 @@ import { Roles } from '../auth/decorator/roles.decorator';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { CultivoService } from './cultivo.service';
-import { GetCultivoDto } from './dto/cultivo.dto';
+import { GetCultivoDto, GetStageCultivoDto } from './dto/cultivo.dto';
 
 @ApiTags('Cultivos')
 @UseGuards(AuthGuard, RolesGuard)
@@ -79,7 +79,7 @@ export class CultivoController {
   }
 
   @Post('getCultivo')
-  @Roles('admin')
+  @Roles('admin', 'user')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Obtener un cultivo por ID' })
   @ApiResponse({
@@ -127,6 +127,23 @@ export class CultivoController {
       statusCode: HttpStatus.OK,
       message: 'Cultivo recuperado correctamente',
       cultivo,
+    };
+  }
+
+  @Get('getEtapas')
+  @Roles('admin', 'user')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Obtener etapas cultivos' })
+  @ApiResponse({
+    status: 200,
+    description: 'Etapas recuperadas correctamente',
+  })
+  async getStateCultivo(@Body() dto: GetStageCultivoDto) {
+    const stages = await this.cultivoService.getStagesCultivos(dto);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Etapas recuperadas correctamente',
+      data: stages,
     };
   }
 }

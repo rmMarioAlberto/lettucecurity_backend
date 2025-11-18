@@ -1,9 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaServicePostgres } from '../prisma/prismaPosgres.service';
-import {
-  CreateParcelaDto,
-  GetDataParcela,
-} from './dto/parcela.dto';
+import { CreateParcelaDto, GetDataParcela } from './dto/parcela.dto';
 import { PrismaServiceMongo } from '../prisma/prismaMongo.service';
 import { AuthUtilsService } from '../utils/getUser.service';
 
@@ -22,7 +19,7 @@ export class ParcelaService {
   }
 
   async getParcelasUser(accessToken: string) {
-    const userId = this.authUtils.getUserIdFromToken(accessToken); 
+    const userId = this.authUtils.getUserIdFromToken(accessToken);
     const parcelas = await this.prismaPostgres.parcela.findMany({
       where: { id_usuario: userId },
     });
@@ -61,27 +58,35 @@ export class ParcelaService {
   async getDataParcela(dto: GetDataParcela) {
     const { idParcela } = dto;
 
-    const parcela = await this.prismaMongo.parcela_data.findUnique({
+    const cycle = await this.prismaMongo.parcela_cycles.findFirst({
       where: { id_parcela: idParcela },
+      orderBy: { startDate: 'desc' },
     });
 
-    if (!parcela) {
+    if (!cycle) {
       throw new NotFoundException(
-        `No se encontró la parcela con ID ${idParcela}`,
+        `No se encontró información de ciclos para la parcela ${idParcela}`,
       );
+    }
+
+    const allReadings = cycle.stages.flatMap((stage) => stage.readings);
+
+    if (!allReadings.length) {
+      return {
+        id_parcela: idParcela,
+        dispositivos: [],
+      };
     }
 
     const iots = await this.prismaPostgres.iot.findMany({
       where: { id_parcela: idParcela },
     });
 
-    const uniqueSensorIds = [
-      ...new Set(
-        parcela.iotReadings.flatMap((iotReading) =>
-          iotReading.sensorReadings.map((sr) => sr.id_sensor),
-        ),
-      ),
-    ];
+    const sensorIds = allReadings.flatMap((r) =>
+      r.sensorReadings.map((sr) => sr.id_sensor),
+    );
+
+    const uniqueSensorIds = [...new Set(sensorIds)].map((n) => Number(n));
 
     const sensors = await this.prismaPostgres.sensor.findMany({
       where: { id_sensor: { in: uniqueSensorIds } },
@@ -95,7 +100,7 @@ export class ParcelaService {
 
     const sensorMap = new Map(sensors.map((s) => [s.id_sensor, s]));
 
-    const data = parcela.iotReadings.map((iotReading) => {
+    const dispositivos = allReadings.map((iotReading) => {
       const iotInfo = iots.find((i) => i.id_iot === iotReading.id_iot);
 
       return {
@@ -123,7 +128,7 @@ export class ParcelaService {
 
     return {
       id_parcela: idParcela,
-      dispositivos: data,
+      dispositivos,
     };
   }
 }

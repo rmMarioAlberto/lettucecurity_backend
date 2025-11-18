@@ -9,10 +9,27 @@ export class ChatbotQueryService {
     private readonly prismaMongo: PrismaServiceMongo,
   ) {}
 
-  /**
-   * Consulta 1: Obtener información básica de la parcela (nombre, descripción, dimensiones, ubicación, status).
-   * Optimizada: Solo campos esenciales, sin relaciones innecesarias.
-   */
+  /////////////////////////////////////////////////////////////////
+  // Helper principal:
+  // Obtiene TODAS las lecturas IoT de una parcela, de todos sus
+  // ciclos y todas sus etapas.
+  /////////////////////////////////////////////////////////////////
+  private async getAllReadingsForParcela(idParcela: number) {
+    const cycles = await this.prismaMongo.parcela_cycles.findMany({
+      where: { id_parcela: idParcela },
+      select: { stages: true },
+    });
+
+    if (!cycles.length) return [];
+
+    return cycles.flatMap((cycle) =>
+      cycle.stages.flatMap((stage) => stage.readings),
+    );
+  }
+
+  /////////////////////////////////////////////////////////////////
+  // 1. Información básica de parcela
+  /////////////////////////////////////////////////////////////////
   async getBasicParcelaInfo(idParcela: number) {
     const parcela = await this.prismaPostgres.parcela.findUnique({
       where: { id_parcela: idParcela },
@@ -26,20 +43,22 @@ export class ChatbotQueryService {
         status: true,
       },
     });
+
     if (!parcela)
       throw new NotFoundException(`Parcela ${idParcela} no encontrada`);
+
     return parcela;
   }
 
-  /**
-   * Consulta 2: Obtener información del cultivo asociado a la parcela (nombre, tipo, status).
-   * Optimizada: Solo via id_cultivo, sin joins extras.
-   */
+  /////////////////////////////////////////////////////////////////
+  // 2. Información del cultivo
+  /////////////////////////////////////////////////////////////////
   async getCultivoInfo(idParcela: number) {
     const parcela = await this.prismaPostgres.parcela.findUnique({
       where: { id_parcela: idParcela },
       select: { id_cultivo: true },
     });
+
     if (!parcela || !parcela.id_cultivo) return null;
 
     return this.prismaPostgres.cultivo.findUnique({
@@ -48,15 +67,15 @@ export class ChatbotQueryService {
     });
   }
 
-  /**
-   * Consulta 3: Obtener parámetros óptimos del cultivo asociado (params con min, max, optimal, etc.).
-   * Optimizada: Directo desde Mongo via id_cultivo.
-   */
+  /////////////////////////////////////////////////////////////////
+  // 3. Parámetros óptimos del cultivo (de Mongo)
+  /////////////////////////////////////////////////////////////////
   async getCultivoParams(idParcela: number) {
     const parcela = await this.prismaPostgres.parcela.findUnique({
       where: { id_parcela: idParcela },
       select: { id_cultivo: true },
     });
+
     if (!parcela || !parcela.id_cultivo) return null;
 
     return this.prismaMongo.cultivo_params.findUnique({
@@ -65,10 +84,9 @@ export class ChatbotQueryService {
     });
   }
 
-  /**
-   * Consulta 4: Obtener lista de IoTs asociados a la parcela (descripción, token, status, ultima_conexion).
-   * Optimizada: Filtrado por id_parcela, solo campos relevantes.
-   */
+  /////////////////////////////////////////////////////////////////
+  // 4. IoTs de la parcela
+  /////////////////////////////////////////////////////////////////
   async getIotsForParcela(idParcela: number) {
     return this.prismaPostgres.iot.findMany({
       where: { id_parcela: idParcela },
@@ -82,66 +100,53 @@ export class ChatbotQueryService {
     });
   }
 
-  /**
-   * Consulta 5: Obtener lecturas recientes de la parcela (últimas N lecturas, default 5).
-   * Optimizada: Slice en app para limitar, no en BD para simplicidad.
-   */
+  /////////////////////////////////////////////////////////////////
+  // 5. Lecturas recientes (últimas N)
+  /////////////////////////////////////////////////////////////////
   async getRecentReadings(idParcela: number, limit: number = 5) {
-    const data = await this.prismaMongo.parcela_data.findUnique({
-      where: { id_parcela: idParcela },
-      select: { iotReadings: true },
-    });
-    return data ? data.iotReadings.slice(-limit) : [];
+    const readings = await this.getAllReadingsForParcela(idParcela);
+    return readings.slice(-limit);
   }
 
-  /**
-   * Consulta 6: Obtener lecturas por IoT específico en la parcela.
-   * Optimizada: Filtrar en app después de fetch.
-   */
+  /////////////////////////////////////////////////////////////////
+  // 6. Lecturas por IoT
+  /////////////////////////////////////////////////////////////////
   async getReadingsByIot(idParcela: number, idIot: number) {
-    const data = await this.prismaMongo.parcela_data.findUnique({
-      where: { id_parcela: idParcela },
-      select: { iotReadings: true },
-    });
-    return data ? data.iotReadings.filter((r) => r.id_iot === idIot) : [];
+    const readings = await this.getAllReadingsForParcela(idParcela);
+    return readings.filter((r) => r.id_iot === idIot);
   }
 
-  /**
-   * Consulta 7: Obtener status general de lecturas recientes (conteo de 'bueno', 'alto', etc.).
-   * Optimizada: Procesamiento en app sobre lecturas limitadas.
-   */
+  /////////////////////////////////////////////////////////////////
+  // 7. Resumen de status (bueno, alto, crítico…)
+  /////////////////////////////////////////////////////////////////
   async getStatusSummary(idParcela: number, limit: number = 10) {
     const readings = await this.getRecentReadings(idParcela, limit);
+
     const statuses = readings.flatMap((r) =>
       r.sensorReadings.map((sr) => sr.status),
     );
+
     return statuses.reduce((acc: Record<string, number>, status) => {
-      if (status == null) return acc;
+      if (!status) return acc;
       acc[status] = (acc[status] || 0) + 1;
       return acc;
     }, {});
   }
 
-  /**
-   * Consulta 8: Obtener lecturas por sensor específico en la parcela.
-   * Optimizada: Filtrar en app.
-   */
+  /////////////////////////////////////////////////////////////////
+  // 8. Lecturas por sensor
+  /////////////////////////////////////////////////////////////////
   async getReadingsBySensor(idParcela: number, idSensor: number) {
-    const data = await this.prismaMongo.parcela_data.findUnique({
-      where: { id_parcela: idParcela },
-      select: { iotReadings: true },
-    });
-    return data
-      ? data.iotReadings.flatMap((r) =>
-          r.sensorReadings.filter((sr) => sr.id_sensor === idSensor),
-        )
-      : [];
+    const readings = await this.getAllReadingsForParcela(idParcela);
+
+    return readings.flatMap((r) =>
+      r.sensorReadings.filter((sr) => sr.id_sensor === idSensor),
+    );
   }
 
-  /**
-   * Consulta 9: Obtener promedios de lecturas por sensor (últimas N).
-   * Optimizada: Cálculo en app.
-   */
+  /////////////////////////////////////////////////////////////////
+  // 9. Promedio de lecturas por sensor
+  /////////////////////////////////////////////////////////////////
   async getAverageReadingsBySensor(
     idParcela: number,
     idSensor: number,
@@ -149,22 +154,24 @@ export class ChatbotQueryService {
   ) {
     const readings = await this.getReadingsBySensor(idParcela, idSensor);
     const recent = readings.slice(-limit);
+
     const sum = recent.reduce((acc, r) => acc + r.lectura, 0);
+
     return {
       average: recent.length ? sum / recent.length : null,
       count: recent.length,
     };
   }
 
-  /**
-   * Consulta 10: Obtener lista de sensores en la parcela (via IoTs asociados).
-   * Optimizada: Join mínimo con sensor_iot.
-   */
+  /////////////////////////////////////////////////////////////////
+  // 10. Sensores asociados a la parcela
+  /////////////////////////////////////////////////////////////////
   async getSensorsForParcela(idParcela: number) {
     const iots = await this.prismaPostgres.iot.findMany({
       where: { id_parcela: idParcela },
       select: { id_iot: true },
     });
+
     const iotIds = iots.map((i) => i.id_iot);
 
     return this.prismaPostgres.sensor_iot.findMany({
@@ -182,10 +189,9 @@ export class ChatbotQueryService {
     });
   }
 
-  /**
-   * Consulta 11: Obtener categorías de sensores en la parcela.
-   * Optimizada: Basado en sensores de la parcela.
-   */
+  /////////////////////////////////////////////////////////////////
+  // 11. Categorías de sensores
+  /////////////////////////////////////////////////////////////////
   async getSensorCategoriesForParcela(idParcela: number) {
     const sensors = await this.getSensorsForParcela(idParcela);
     const sensorIds = sensors.map((s) => s.sensor.id_sensor);
@@ -195,77 +201,63 @@ export class ChatbotQueryService {
     });
   }
 
-  /**
-   * Consulta 12: Obtener imágenes recientes de lecturas (últimas N URLs y results).
-   * Optimizada: Slice en app.
-   */
+  /////////////////////////////////////////////////////////////////
+  // 12. Últimas imágenes
+  /////////////////////////////////////////////////////////////////
   async getRecentImages(idParcela: number, limit: number = 5) {
-    const data = await this.prismaMongo.parcela_data.findUnique({
-      where: { id_parcela: idParcela },
-      select: { iotReadings: true },
-    });
-    return data
-      ? data.iotReadings.slice(-limit).map((r) => ({
-          image_url: r.image_url,
-          image_result: r.image_result,
-        }))
-      : [];
+    const readings = await this.getAllReadingsForParcela(idParcela);
+
+    return readings.slice(-limit).map((r) => ({
+      image_url: r.image_url,
+      image_result: r.image_result,
+    }));
   }
 
-  /**
-   * Consulta 13: Obtener análisis de deviation por sensor (promedio de deviations en últimas N lecturas).
-   * Optimizada: Cálculo en app.
-   */
+  /////////////////////////////////////////////////////////////////
+  // 13. Análisis de deviation por sensor
+  /////////////////////////////////////////////////////////////////
   async getDeviationAnalysis(
     idParcela: number,
     idSensor: number,
     limit: number = 10,
   ) {
     const readings = await this.getReadingsBySensor(idParcela, idSensor);
-    const recent = readings.slice(-limit).filter((r) => r.deviation !== null);
+
+    const recent = readings.slice(-limit).filter((r) => r.deviation != null);
+
     const sum = recent.reduce((acc, r) => acc + (r.deviation ?? 0), 0);
+
     return {
       averageDeviation: recent.length ? sum / recent.length : null,
       count: recent.length,
     };
   }
 
-  /**
-   * Consulta 14: Obtener conteo de statuses por tipo en la parcela (global).
-   * Optimizada: Agregación en app sobre todas las lecturas.
-   */
+  /////////////////////////////////////////////////////////////////
+  // 14. Conteo global de statuses
+  /////////////////////////////////////////////////////////////////
   async getGlobalStatusCount(idParcela: number) {
-    const data = await this.prismaMongo.parcela_data.findUnique({
-      where: { id_parcela: idParcela },
-      select: { iotReadings: true },
-    });
-    if (!data) return {};
-    const statuses = data.iotReadings.flatMap((r) =>
+    const readings = await this.getAllReadingsForParcela(idParcela);
+
+    const statuses = readings.flatMap((r) =>
       r.sensorReadings.map((sr) => sr.status),
     );
-    return statuses.reduce(
-      (acc: Record<string, number>, status) => {
-        if (status == null) return acc;
-        acc[status] = (acc[status] || 0) + 1;
-        return acc;
-      },
-      {} as Record<string, number>,
-    );
+
+    return statuses.reduce((acc: Record<string, number>, status) => {
+      if (!status) return acc;
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {});
   }
 
-  /**
-   * Consulta 15: Obtener lecturas filtradas por status (e.g., solo 'alto' o 'bajo').
-   * Optimizada: Filtrar en app.
-   */
+  /////////////////////////////////////////////////////////////////
+  // 15. Lecturas filtradas por status
+  /////////////////////////////////////////////////////////////////
   async getReadingsByStatus(idParcela: number, targetStatus: string) {
-    const data = await this.prismaMongo.parcela_data.findUnique({
-      where: { id_parcela: idParcela },
-      select: { iotReadings: true },
-    });
-    return data
-      ? data.iotReadings.flatMap((r) =>
-          r.sensorReadings.filter((sr) => sr.status === targetStatus),
-        )
-      : [];
+    const readings = await this.getAllReadingsForParcela(idParcela);
+
+    return readings.flatMap((r) =>
+      r.sensorReadings.filter((sr) => sr.status === targetStatus),
+    );
   }
 }
