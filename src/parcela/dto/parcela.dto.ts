@@ -38,13 +38,11 @@ export class CreateParcelaDto {
   ancho?: number;
 
   @ApiPropertyOptional({ example: 19.4326, description: 'Latitud de ubicación GPS' })
-  @IsPositive()
   @IsNumber()
   @IsOptional()
   latitud?: number;
 
   @ApiPropertyOptional({ example: -99.1332, description: 'Longitud de ubicación GPS' })
-  @IsPositive()
   @IsNumber()
   @IsOptional()
   longitud?: number;

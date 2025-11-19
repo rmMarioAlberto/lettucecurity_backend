@@ -17,15 +17,15 @@ async function bootstrap() {
   });
 
   // // CORS
-  // const corsOrigins = process.env.CORS_ORIGINS
-  //   ? process.env.CORS_ORIGINS.split(',').map((s) => s.trim())
-  //   : ['*'];
+  const corsOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',').map((s) => s.trim())
+    : ['*'];
 
-  // app.enableCors({
-  //   origin: corsOrigins,
-  //   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-  //   credentials: true,
-  // });
+  app.enableCors({
+    origin: corsOrigins,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+  });
 
   // Activar body parser con límite
   app.use(bodyParser.json({ limit: '20mb' }));
@@ -58,7 +58,7 @@ async function bootstrap() {
 
   // Filtros y rate limit
   app.useGlobalFilters(new AllExceptionsFilter());
-  app.use(new RateLimitMiddleware().use);
+  // app.use(new RateLimitMiddleware().use);
 
   await app.listen(process.env.PORT ?? 3000);
   console.log(`API corriendo en http://localhost:${process.env.PORT ?? 3000}`);
