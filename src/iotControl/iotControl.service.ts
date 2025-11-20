@@ -16,7 +16,34 @@ export class IotControlService {
   async submitData(dto: SubmitDataDto) {
     const { idParcela, data } = dto;
 
-    // 1. Validar que la parcela exista
+    // 1. Validar parcela y obtener parámetros del cultivo
+    const { parcela, paramsMap } =
+      await this.validateAndGetCultivoParams(idParcela);
+
+    // 2. Procesar todas las lecturas IoT
+    const iotReadingsToAdd = await this.processIotReadings(
+      data,
+      idParcela,
+      paramsMap,
+    );
+
+    // 3. Obtener ciclo activo (debe existir previamente)
+    const activeCycle = await this.getActiveCycle(idParcela);
+
+    // 4. Insertar lecturas en la etapa activa
+    await this.addReadingsToActiveStage(activeCycle, iotReadingsToAdd);
+
+    return {
+      message:
+        'Datos enviados exitosamente con clasificación de imagen y sensores',
+    };
+  }
+
+  // ============================================================
+  // MÉTODOS PRIVADOS
+  // ============================================================
+
+  private async validateAndGetCultivoParams(idParcela: number) {
     const parcela = await this.prismaPostgres.parcela.findUnique({
       where: { id_parcela: idParcela },
       include: { cultivo: true },
@@ -31,7 +58,6 @@ export class IotControlService {
       throw new BadRequestException('La parcela no tiene un cultivo asignado');
     }
 
-    // 2. Obtener parámetros del cultivo desde Mongo
     const cultivoParams = await this.prismaMongo.cultivo_params.findUnique({
       where: { id: idCultivo },
     });
@@ -46,146 +72,42 @@ export class IotControlService {
       cultivoParams.params.map((p) => [p.category_id, p]),
     );
 
-    // ============================================================
-    // 3. PROCESAR TODAS LAS LECTURAS IOT
-    // ============================================================
-    const iotReadingsToAdd = await Promise.all(
-      data.map(async (iotData: SubmitIotDataDto) => {
+    return { parcela, paramsMap };
+  }
+
+  private async processIotReadings(
+    data: SubmitIotDataDto[],
+    idParcela: number,
+    paramsMap: Map<number, any>,
+  ) {
+    return Promise.all(
+      data.map(async (iotData) => {
         const { idIot, hora, image, dataSensores } = iotData;
 
-        // 3.1 Validar IoT
-        const checkIot = await this.prismaPostgres.iot.findUnique({
-          where: { id_iot: idIot },
-        });
+        // Validar IoT
+        await this.validateIot(idIot);
 
-        if (!checkIot) {
-          throw new BadRequestException(`El IoT con id ${idIot} no existe`);
-        }
-
-        if (!image)
+        if (!image) {
           throw new BadRequestException('Imagen requerida para la lectura IoT');
-
-        // 3.2 Subir imagen
-        const uploadResult = await this.cloudinary.uploadBase64(image, {
-          parcelaId: idParcela,
-          public_id: `iot_${idIot}_${Date.now()}`,
-        });
-        const imageUrl = uploadResult.secure_url;
-
-        let imageResult = 'Desconocido';
-        try {
-          const response = await axios.post(
-            'https://web-production-02772.up.railway.app/predict',
-            { image },
-          );
-
-          imageResult =
-            response.data.result || JSON.stringify(response.data.prediction);
-        } catch (error) {
-          console.error('Error al clasificar la imagen:', error.message);
         }
 
-        // 3.4 Evaluar sensores
-        const sensorReadingsWithStatus = await Promise.all(
-          dataSensores.map(async (sensor) => {
-            const { idSensor, lectura } = sensor;
-
-            const checkSensor = await this.prismaPostgres.sensor.findUnique({
-              where: { id_sensor: idSensor },
-            });
-
-            if (!checkSensor) {
-              throw new BadRequestException(
-                `El sensor con id ${idSensor} no existe`,
-              );
-            }
-
-            const idCategory = checkSensor.id_category;
-            if (!idCategory) {
-              return {
-                id_sensor: idSensor,
-                lectura,
-                status: 'desconocido',
-                deviation: null,
-                message: 'No se encontró categoría para este sensor',
-              };
-            }
-
-            const param = paramsMap.get(idCategory);
-            if (!param) {
-              return {
-                id_sensor: idSensor,
-                lectura,
-                status: 'desconocido',
-                deviation: null,
-                message:
-                  'No se encontraron parámetros para esta categoría en el cultivo',
-              };
-            }
-
-            if (checkSensor.unidad_medicion !== param.unidad_medicion) {
-              return {
-                id_sensor: idSensor,
-                lectura,
-                status: 'error',
-                deviation: null,
-                message: 'Unidad de medición no coincide con la categoría',
-              };
-            }
-
-            const deviation =
-              param.optimal !== undefined ? lectura - param.optimal : null;
-
-            let status = 'bueno';
-            let message = 'Lectura dentro del rango óptimo';
-
-            if (lectura < param.min) {
-              status = 'bajo';
-              message =
-                deviation !== null
-                  ? `Lectura ${Math.abs(deviation).toFixed(2)} por debajo del óptimo`
-                  : 'Lectura por debajo del óptimo';
-            } else if (lectura > param.max) {
-              status = 'alto';
-              message =
-                deviation !== null
-                  ? `Lectura ${deviation.toFixed(2)} por encima del óptimo`
-                  : 'Lectura por encima del óptimo';
-            } else if (
-              param.warning_threshold !== undefined &&
-              deviation !== null &&
-              Math.abs(deviation) > param.warning_threshold
-            ) {
-              status = deviation > 0 ? 'preocupante_alto' : 'preocupante_bajo';
-              message = `Lectura cerca del límite: ${deviation.toFixed(2)} del óptimo`;
-            }
-
-            return {
-              id_sensor: idSensor,
-              lectura,
-              status,
-              deviation,
-              message,
-            };
-          }),
+        // Subir imagen y clasificarla
+        const { imageUrl, imageResult } = await this.processImage(
+          image,
+          idParcela,
+          idIot,
         );
 
-        let overallStatus = 'bueno';
-        if (
-          sensorReadingsWithStatus.some((sr) =>
-            ['alto', 'bajo', 'preocupante_alto', 'preocupante_bajo'].includes(
-              sr.status,
-            ),
-          )
-        ) {
-          overallStatus = 'preocupante';
-        } else if (
-          sensorReadingsWithStatus.some((sr) =>
-            ['error', 'desconocido'].includes(sr.status),
-          )
-        ) {
-          overallStatus = 'desconocido';
-        }
+        // Evaluar sensores
+        const sensorReadingsWithStatus = await this.evaluateSensors(
+          dataSensores,
+          paramsMap,
+        );
+
+        // Calcular estado general
+        const overallStatus = this.calculateOverallStatus(
+          sensorReadingsWithStatus,
+        );
 
         return {
           id_iot: idIot,
@@ -197,113 +119,206 @@ export class IotControlService {
         };
       }),
     );
+  }
 
-    // ============================================================
-    // 4. INSERTAR EN EL NUEVO MODELO: parcela_cycles → stages → readings
-    // ============================================================
+  private async validateIot(idIot: number) {
+    const checkIot = await this.prismaPostgres.iot.findUnique({
+      where: { id_iot: idIot },
+    });
 
-    // 4.1 Buscar ciclo activo
-    let activeCycle = await this.prismaMongo.parcela_cycles.findFirst({
+    if (!checkIot) {
+      throw new BadRequestException(`El IoT con id ${idIot} no existe`);
+    }
+  }
+
+  private async processImage(image: string, parcelaId: number, idIot: number) {
+    // Subir imagen a Cloudinary
+    const uploadResult = await this.cloudinary.uploadBase64(image, {
+      parcelaId,
+      public_id: `iot_${idIot}_${Date.now()}`,
+    });
+    const imageUrl = uploadResult.secure_url;
+
+    // Clasificar imagen con IA
+    let imageResult = 'Desconocido';
+    try {
+      const response = await axios.post(
+        'https://web-production-02772.up.railway.app/predict',
+        { image },
+      );
+
+      imageResult =
+        response.data.result || JSON.stringify(response.data.prediction);
+    } catch (error) {
+      console.error('Error al clasificar la imagen:', error.message);
+    }
+
+    return { imageUrl, imageResult };
+  }
+
+  private async evaluateSensors(
+    dataSensores: Array<{ idSensor: number; lectura: number }>,
+    paramsMap: Map<number, any>,
+  ) {
+    return Promise.all(
+      dataSensores.map(async (sensor) => {
+        const { idSensor, lectura } = sensor;
+
+        const checkSensor = await this.prismaPostgres.sensor.findUnique({
+          where: { id_sensor: idSensor },
+        });
+
+        if (!checkSensor) {
+          throw new BadRequestException(
+            `El sensor con id ${idSensor} no existe`,
+          );
+        }
+
+        const idCategory = checkSensor.id_category;
+        if (!idCategory) {
+          return {
+            id_sensor: idSensor,
+            lectura,
+            status: 'desconocido',
+            deviation: null,
+            message: 'No se encontró categoría para este sensor',
+          };
+        }
+
+        const param = paramsMap.get(idCategory);
+        if (!param) {
+          return {
+            id_sensor: idSensor,
+            lectura,
+            status: 'desconocido',
+            deviation: null,
+            message:
+              'No se encontraron parámetros para esta categoría en el cultivo',
+          };
+        }
+
+        if (checkSensor.unidad_medicion !== param.unidad_medicion) {
+          return {
+            id_sensor: idSensor,
+            lectura,
+            status: 'error',
+            deviation: null,
+            message: 'Unidad de medición no coincide con la categoría',
+          };
+        }
+
+        return this.evaluateSensorReading(lectura, param, idSensor);
+      }),
+    );
+  }
+
+  private evaluateSensorReading(lectura: number, param: any, idSensor: number) {
+    const deviation =
+      param.optimal !== undefined ? lectura - param.optimal : null;
+
+    let status = 'bueno';
+    let message = 'Lectura dentro del rango óptimo';
+
+    if (lectura < param.min) {
+      status = 'bajo';
+      message =
+        deviation !== null
+          ? `Lectura ${Math.abs(deviation).toFixed(2)} por debajo del óptimo`
+          : 'Lectura por debajo del óptimo';
+    } else if (lectura > param.max) {
+      status = 'alto';
+      message =
+        deviation !== null
+          ? `Lectura ${deviation.toFixed(2)} por encima del óptimo`
+          : 'Lectura por encima del óptimo';
+    } else if (
+      param.warning_threshold !== undefined &&
+      deviation !== null &&
+      Math.abs(deviation) > param.warning_threshold
+    ) {
+      status = deviation > 0 ? 'preocupante_alto' : 'preocupante_bajo';
+      message = `Lectura cerca del límite: ${deviation.toFixed(2)} del óptimo`;
+    }
+
+    return {
+      id_sensor: idSensor,
+      lectura,
+      status,
+      deviation,
+      message,
+    };
+  }
+
+  private calculateOverallStatus(sensorReadings: any[]) {
+    if (
+      sensorReadings.some((sr) =>
+        ['alto', 'bajo', 'preocupante_alto', 'preocupante_bajo'].includes(
+          sr.status,
+        ),
+      )
+    ) {
+      return 'preocupante';
+    } else if (
+      sensorReadings.some((sr) => ['error', 'desconocido'].includes(sr.status))
+    ) {
+      return 'desconocido';
+    }
+    return 'bueno';
+  }
+
+  private async getActiveCycle(idParcela: number) {
+    const activeCycle = await this.prismaMongo.parcela_cycles.findFirst({
       where: {
         id_parcela: idParcela,
         endDate: null,
       },
-      select: { id_cycle: true, stages: true, current_stage_index : true },
+      select: { id_cycle: true, stages: true, current_stage_index: true },
     });
 
-    // SI NO EXISTE CICLO → CREAR UNO
     if (!activeCycle) {
-      // TRAER ETAPAS BASE DEL CULTIVO
-      const growthStages = await this.prismaMongo.growth_stages.findFirst({
-        where: { cultivo_id: idCultivo },
-      });
-
-      if (!growthStages) {
-        throw new BadRequestException(
-          `No hay etapas definidas para el cultivo ${idCultivo}`,
-        );
-      }
-
-      // MAPEAR ETAPAS INICIALES
-      const mappedStages = growthStages.stages.map((s) => ({
-        stage_index: s.stage_index,
-        stage_name: s.stage_name,
-        startDate: new Date(), // LAS ETAPAS EMPIEZAN AHORA
-        endDate: null,
-        readings: [],
-      }));
-
-      // CREAR EL CICLO REAL
-      activeCycle = await this.prismaMongo.parcela_cycles.create({
-        data: {
-          id_parcela: idParcela,
-          ciclo_num: 1,
-          cultivo_id: idCultivo,
-          cultivo_name: parcela.cultivo?.nombre ?? 'Desconocido',
-          startDate: new Date(),
-          endDate: null,
-          current_stage_index: 1,
-          stages: mappedStages,
-        },
-        select: { id_cycle: true, stages: true, current_stage_index : true },
-      });
+      throw new BadRequestException(
+        `No existe un ciclo activo para la parcela ${idParcela}. Debe crear un ciclo antes de enviar datos.`,
+      );
     }
 
-    // 4.2 Buscar etapa activa
-    let activeStageIndex = activeCycle.current_stage_index;
+    return activeCycle;
+  }
+
+  private async addReadingsToActiveStage(
+    activeCycle: any,
+    iotReadingsToAdd: any[],
+  ) {
+    const activeStageIndex = activeCycle.current_stage_index;
 
     if (activeStageIndex === -1) {
-      const newStage = {
-        stage_index: 1,
-        stage_name: 'Etapa automática',
-        startDate: new Date(),
-        endDate: null,
-        readings: [],
-      };
-
-      await this.prismaMongo.parcela_cycles.update({
-        where: { id_cycle: activeCycle.id_cycle },
-        data: {
-          stages: {
-            push: newStage,
-          },
-        },
-      });
-
-      activeStageIndex = 0;
-      activeCycle.stages.push(newStage);
+      throw new BadRequestException(
+        'El ciclo no tiene una etapa activa configurada',
+      );
     }
 
-    // 4.3 Insertar lecturas
-
+    // Obtener el ciclo completo
     const cycle = await this.prismaMongo.parcela_cycles.findUnique({
       where: { id_cycle: activeCycle.id_cycle },
     });
 
-    // Si cycle fuera null (no debería pasar), lanzar error seguro
     if (!cycle) {
       throw new BadRequestException(
         `No se encontró el ciclo activo con id ${activeCycle.id_cycle}`,
       );
     }
 
-    // Copia profunda
+    // Copia profunda de las etapas
     const updatedStages = JSON.parse(JSON.stringify(cycle.stages));
 
-    // Insertar lecturas
+    // Insertar lecturas en la etapa activa
     updatedStages[activeStageIndex].readings.push(...iotReadingsToAdd);
 
-    // Guardar de vuelta
+    // Guardar cambios
     await this.prismaMongo.parcela_cycles.update({
       where: { id_cycle: activeCycle.id_cycle },
       data: {
         stages: updatedStages,
       },
     });
-
-    return {
-      message:
-        'Datos enviados exitosamente con clasificación de imagen y sensores',
-    };
   }
 }

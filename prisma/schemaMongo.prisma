@@ -110,7 +110,7 @@ type CycleStage {
   stage_index  Int
   stage_name   String
 
-  startDate    DateTime
+  startDate    DateTime?
   endDate      DateTime?
 
   readings     IotReading[]

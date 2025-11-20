@@ -10,17 +10,26 @@ import {
 } from 'class-validator';
 
 export class CreateParcelaDto {
-  @ApiProperty({ example: 1, description: 'ID del usuario propietario de la parcela' })
+  @ApiProperty({
+    example: 1,
+    description: 'ID del usuario propietario de la parcela',
+  })
   @IsInt()
   @IsNotEmpty()
   id_usuario: number;
 
-  @ApiPropertyOptional({ example: 'Parcela Norte', description: 'Nombre de la parcela' })
+  @ApiPropertyOptional({
+    example: 'Parcela Norte',
+    description: 'Nombre de la parcela',
+  })
   @IsString()
   @IsOptional()
   nombre?: string;
 
-  @ApiPropertyOptional({ example: 'Zona experimental de maíz', description: 'Descripción de la parcela' })
+  @ApiPropertyOptional({
+    example: 'Zona experimental de maíz',
+    description: 'Descripción de la parcela',
+  })
   @IsString()
   @IsOptional()
   descripcion?: string;
@@ -37,12 +46,18 @@ export class CreateParcelaDto {
   @IsOptional()
   ancho?: number;
 
-  @ApiPropertyOptional({ example: 19.4326, description: 'Latitud de ubicación GPS' })
+  @ApiPropertyOptional({
+    example: 19.4326,
+    description: 'Latitud de ubicación GPS',
+  })
   @IsNumber()
   @IsOptional()
   latitud?: number;
 
-  @ApiPropertyOptional({ example: -99.1332, description: 'Longitud de ubicación GPS' })
+  @ApiPropertyOptional({
+    example: -99.1332,
+    description: 'Longitud de ubicación GPS',
+  })
   @IsNumber()
   @IsOptional()
   longitud?: number;
@@ -55,17 +70,26 @@ export class CreateParcelaDto {
 }
 
 export class EditParcelaDto {
-  @ApiProperty({ example: 1, description: 'ID del usuario propietario de la parcela' })
+  @ApiProperty({
+    example: 1,
+    description: 'ID del usuario propietario de la parcela',
+  })
   @IsInt()
   @IsNotEmpty()
   id_usuario: number;
 
-  @ApiPropertyOptional({ example: 'Parcela actualizada', description: 'Nuevo nombre de la parcela' })
+  @ApiPropertyOptional({
+    example: 'Parcela actualizada',
+    description: 'Nuevo nombre de la parcela',
+  })
   @IsString()
   @IsOptional()
   nombre?: string;
 
-  @ApiPropertyOptional({ example: 'Actualización del cultivo de maíz', description: 'Nueva descripción' })
+  @ApiPropertyOptional({
+    example: 'Actualización del cultivo de maíz',
+    description: 'Nueva descripción',
+  })
   @IsString()
   @IsOptional()
   descripcion?: string;
@@ -96,10 +120,45 @@ export class EditParcelaDto {
 }
 
 export class GetDataParcela {
-
-  @ApiPropertyOptional({example : 1, description : 'ID de la parcela '})
+  @ApiPropertyOptional({ example: 1, description: 'ID de la parcela ' })
   @Min(1)
   @IsNotEmpty()
   @IsNumber()
-  idParcela : number
+  idParcela: number;
+}
+
+export class UpdateCurrentStageDto {
+  @ApiProperty({ example: 1, description: 'ID de la parcela ' })
+  @Min(1)
+  @IsNotEmpty()
+  @IsNumber()
+  idParcela: number;
+
+  @ApiProperty({ example: 1, description: 'Indice de la etapa actual' })
+  @Min(1)
+  @IsNotEmpty()
+  @IsNumber()
+  stageIndex: number;
+}
+
+export class GetStageParcela {
+  @ApiPropertyOptional({ example: 1, description: 'ID de la parcela ' })
+  @Min(1)
+  @IsNotEmpty()
+  @IsNumber()
+  idParcela: number;
+}
+
+export class CreateCycleDto {
+  @ApiProperty({ example: 1, description: 'ID de la parcela ' })
+  @Min(1)
+  @IsNotEmpty()
+  @IsNumber()
+  idParcela: number;
+
+  @ApiProperty({ example: 1, description: 'Indice de la etapa actual' })
+  @Min(1)
+  @IsNotEmpty()
+  @IsNumber()
+  stageIndex: number;
 }
