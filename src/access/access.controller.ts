@@ -19,15 +19,30 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 export class AccessController {
   constructor(private readonly accessService: AccessService) {}
   @Post('login')
-  @ApiOperation({ summary: 'Iniciar sesión de usuario' })
+  @ApiOperation({
+    summary: 'Iniciar sesión de usuario',
+    description:
+      'Autentica al usuario con correo y contraseña. Retorna el access token en la respuesta y guarda el refresh token en una cookie httpOnly segura.',
+  })
   @ApiResponse({
     status: 200,
-    description: 'Tokens generados correctamente',
+    description:
+      'Login exitoso. Access token en la respuesta, refresh token en cookie httpOnly',
     schema: {
       example: {
         statusCode: 200,
         message: 'Login exitoso',
-        data: { accessToken: '', user: {} },
+        data: {
+          accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+          user: {
+            id_usuario: 1,
+            username: 'usuario123',
+            correo: 'usuario@example.com',
+            nombre: 'Juan',
+            apellido: 'Pérez',
+            tipo_usuario: 2,
+          },
+        },
       },
     },
   })
@@ -59,10 +74,15 @@ export class AccessController {
     };
   }
   @Delete('logout')
-  @ApiOperation({ summary: 'Cerrar sesión del usuario' })
+  @ApiOperation({
+    summary: 'Cerrar sesión del usuario',
+    description:
+      'Cierra la sesión del usuario eliminando el registro de la base de datos y limpiando la cookie. Usa el refresh token almacenado en cookies para identificar la sesión. También limpia automáticamente sesiones expiradas del usuario.',
+  })
   @ApiResponse({
     status: 200,
-    description: 'Sesión cerrada correctamente',
+    description:
+      'Sesión cerrada correctamente. La sesión fue eliminada de la BD y la cookie fue limpiada',
     schema: {
       example: {
         statusCode: 200,
@@ -70,37 +90,48 @@ export class AccessController {
       },
     },
   })
-  @ApiResponse({ status: 401, description: 'Token inválido o faltante' })
+  @ApiResponse({
+    status: 401,
+    description: 'Refresh token faltante en cookies o inválido',
+  })
   @HttpCode(HttpStatus.OK)
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const authHeader = req.headers['authorization'];
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException(
-        'Missing or invalid Authorization header',
-      );
+    const refreshToken = req.cookies['refreshToken'];
+
+    if (!refreshToken) {
+      throw new UnauthorizedException('Missing refresh token in cookies');
     }
-    const token = authHeader.split(' ')[1];
-    await this.accessService.logoutUser(token);
+
+    await this.accessService.logoutUser(refreshToken);
     res.clearCookie('refreshToken');
+
     return {
       statusCode: HttpStatus.OK,
       message: 'Logged out successfully',
     };
   }
   @Get('refreshToken')
-  @ApiOperation({ summary: 'Actualizar tokens (access y refresh)' })
+  @ApiOperation({
+    summary: 'Renovar tokens de acceso',
+    description:
+      'Genera nuevos access y refresh tokens usando el refresh token almacenado en cookies. Actualiza la sesión en la BD con los nuevos tokens y limpia automáticamente sesiones expiradas del usuario.',
+  })
   @ApiResponse({
     status: 200,
-    description: 'Tokens renovados correctamente',
+    description:
+      'Tokens renovados correctamente. Nuevo access token en la respuesta, nuevo refresh token en cookie',
     schema: {
       example: {
         statusCode: 200,
         message: 'Tokens refreshed successfully',
-        accessToken: 'nuevo-access-token...',
+        accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
       },
     },
   })
-  @ApiResponse({ status: 401, description: 'Token inválido o expirado' })
+  @ApiResponse({
+    status: 401,
+    description: 'Refresh token faltante, inválido, expirado o sesión revocada',
+  })
   @HttpCode(HttpStatus.OK)
   async refreshToken(
     @Req() req: Request,

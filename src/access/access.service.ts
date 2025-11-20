@@ -3,6 +3,7 @@ import { PrismaServicePostgres } from '../prisma/prismaPosgres.service';
 import { AccessLoginDto } from './dto/access.dto';
 import * as bcrypt from 'bcrypt';
 import { TokensService } from '../tokens/tokens.service';
+
 @Injectable()
 export class AccessService {
   constructor(
@@ -61,16 +62,24 @@ export class AccessService {
   }
 
   async logoutUser(token: string) {
-    let payload;
-    try {
-      payload = await this.tokensService.validateAccessToken(token);
-    } catch {
-      const refreshResult =
-        await this.tokensService.validateRefreshToken(token);
-      payload = refreshResult.payload;
+    // Intentar decodificar el token para obtener el userId
+    // NO validamos porque validateRefreshToken actualiza la sesión
+    const decoded = this.tokensService.decodeTokenUnsafe(token);
+
+    if (!decoded || !decoded.id) {
+      throw new UnauthorizedException(
+        'No se pudo identificar la sesión a cerrar',
+      );
     }
-    // Revoca sesión
-    await this.tokensService.revokeSession(payload.id, token);
+
+    const userId: number = decoded.id;
+
+    // Eliminar la sesión directamente por refresh token
+    await this.tokensService.revokeSessionByRefreshToken(userId, token);
+
+    // Limpiar sesiones expiradas del usuario
+    await this.cleanUserExpiredSessions(userId);
+
     return { message: 'Session closed' };
   }
 
@@ -78,22 +87,62 @@ export class AccessService {
     const { payload, newAccessToken, newRefreshToken } =
       await this.tokensService.validateRefreshToken(refreshToken);
 
+    // Limpiar sesiones expiradas del usuario después del refresh
+    await this.cleanUserExpiredSessions(payload.id);
+
     return {
       accessToken: newAccessToken,
       refreshToken: newRefreshToken,
     };
   }
 
+  /**
+   * Limpia sesiones expiradas de un usuario específico
+   */
+  private async cleanUserExpiredSessions(userId: number) {
+    try {
+      const now = new Date();
+      await this.prismaPostgres.sesion.deleteMany({
+        where: {
+          id_usuario: userId,
+          OR: [
+            { fecha_expiracion: { lte: now } },
+            { revoked: true },
+            { status: 0 },
+          ],
+        },
+      });
+    } catch (error) {
+      console.error(`Error limpiando sesiones del usuario ${userId}:`, error);
+    }
+  }
+
+  /**
+   * Limpia todas las sesiones expiradas, revocadas o inactivas del sistema
+   * Esta función debe ser llamada periódicamente por un cron job
+   */
   async cleanSessiones() {
     try {
       const now = new Date();
       const deletedSessions = await this.prismaPostgres.sesion.deleteMany({
         where: {
-          AND: [{ status: 1 }, { fecha_expiracion: { lte: now } }],
+          OR: [
+            { fecha_expiracion: { lte: now } }, // Sesiones expiradas
+            { revoked: true }, // Sesiones revocadas
+            { status: 0 }, // Sesiones inactivas
+          ],
         },
       });
-      console.log(`Sesiones limpiadas: ${deletedSessions.count}`);
-      return deletedSessions;
+
+      const message = `Sesiones limpiadas: ${deletedSessions.count}`;
+      console.log(message);
+
+      return {
+        success: true,
+        deletedCount: deletedSessions.count,
+        message,
+        timestamp: new Date().toISOString(),
+      };
     } catch (error) {
       console.error('Error limpiando sesiones:', error);
       throw error;

@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { PrismaPostgresModule } from '../prisma/prismaPostgres.module'; 
+import { PrismaPostgresModule } from '../prisma/prismaPostgres.module';
 import { AccessController } from './access.controller';
 import { AccessService } from './access.service';
 import { TokensModule } from '../tokens/tokens.module';
-import { JwtModule } from '@nestjs/jwt'; 
+import { JwtModule } from '@nestjs/jwt';
 @Module({
   imports: [
     PrismaPostgresModule,
@@ -17,5 +17,6 @@ import { JwtModule } from '@nestjs/jwt';
   ],
   controllers: [AccessController],
   providers: [AccessService],
+  exports: [AccessService],
 })
 export class AccessModule {}

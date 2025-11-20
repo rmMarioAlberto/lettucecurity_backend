@@ -1,7 +1,7 @@
 import { MiddlewareConsumer, Module } from '@nestjs/common';
 import { SensorsModule } from './sensors/sensors.module';
-import { UserModule } from "./users/users.module";
-import { AccessModule } from "./access/access.module";
+import { UserModule } from './users/users.module';
+import { AccessModule } from './access/access.module';
 import { IotModule } from './iot/iot.module';
 import { ParcelaModule } from './parcela/parcela.module';
 import { ModuleCultivo } from './cultivo/cultivo.module';
@@ -9,7 +9,7 @@ import { ModuleCultivo } from './cultivo/cultivo.module';
 // import { RateLimitMiddleware } from './utils/rate-limit.middleware';
 import { IotControlModule } from './iotControl/iotControl.module';
 import { ChatbotModule } from './chatbot/chatbot.module';
-import { ConfigModule } from '@nestjs/config';
+import { CronModule } from './cron/cron.module';
 
 @Module({
   imports: [
@@ -20,15 +20,14 @@ import { ConfigModule } from '@nestjs/config';
     ParcelaModule,
     ModuleCultivo,
     IotControlModule,
-    ChatbotModule
+    ChatbotModule,
+    CronModule,
   ],
 })
 export class AppModule {
-
   // configure(consumer: MiddlewareConsumer) {
   //   consumer
   //     .apply(CorsMiddleware, RateLimitMiddleware)
-  //     .forRoutes('*'); 
+  //     .forRoutes('*');
   // }
-
 }

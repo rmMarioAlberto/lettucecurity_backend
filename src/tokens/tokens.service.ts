@@ -62,9 +62,7 @@ export class TokensService {
     return payload;
   }
 
-  async validateRefreshToken(
-    token: string,
-  ): Promise<{
+  async validateRefreshToken(token: string): Promise<{
     payload: any;
     newAccessToken: string;
     newRefreshToken: string;
@@ -131,10 +129,38 @@ export class TokensService {
       where: { id_usuario: userId, token_acceso: token },
     });
     if (session) {
-      await this.prismaPostgres.sesion.update({
+      await this.prismaPostgres.sesion.delete({
         where: { id_sesion: session.id_sesion },
-        data: { revoked: true, status: 0 },
       });
+    }
+  }
+
+  /**
+   * Revoca y elimina una sesión usando el refresh token
+   */
+  async revokeSessionByRefreshToken(userId: number, refreshToken: string) {
+    const session = await this.prismaPostgres.sesion.findFirst({
+      where: {
+        id_usuario: userId,
+        token_refresh: refreshToken,
+      },
+    });
+    if (session) {
+      await this.prismaPostgres.sesion.delete({
+        where: { id_sesion: session.id_sesion },
+      });
+    }
+  }
+
+  /**
+   * Decodifica un token sin validar firma ni expiración
+   * Útil para obtener información del usuario de tokens expirados
+   */
+  decodeTokenUnsafe(token: string): any {
+    try {
+      return this.jwtService.decode(token);
+    } catch {
+      return null;
     }
   }
 }
