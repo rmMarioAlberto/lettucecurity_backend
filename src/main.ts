@@ -3,7 +3,6 @@ import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { config } from 'dotenv';
 import { AllExceptionsFilter } from './utils/exceptions.filter';
-import { RateLimitMiddleware } from './utils/rate-limit.middleware';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
@@ -11,53 +10,69 @@ import cookieParser from 'cookie-parser';
 config();
 
 async function bootstrap() {
-  // DESACTIVAR bodyParser interno de Nest
+  // Crear aplicación sin bodyParser interno
   const app = await NestFactory.create(AppModule, {
     bodyParser: false,
   });
 
-  app.enableCors({
-    origin: true, // ← refleja automáticamente el Origin de la petición (funciona con credentials: true)
-    credentials: true,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: 'Origin, X-Requested-With, Content-Type, Accept, Authorization',
-  });
+  // ============================================
+  // BODY PARSER
+  // ============================================
+  const bodyLimit = process.env.BODY_LIMIT || '20mb';
+  app.use(bodyParser.json({ limit: bodyLimit }));
+  app.use(bodyParser.urlencoded({ limit: bodyLimit, extended: true }));
 
-  // Activar body parser con límite
-  app.use(bodyParser.json({ limit: '20mb' }));
-  app.use(bodyParser.urlencoded({ limit: '20mb', extended: true }));
-
-  // cookies
+  // ============================================
+  // COOKIES
+  // ============================================
   app.use(cookieParser());
 
-  // Pipes
+  // ============================================
+  // VALIDATION PIPE
+  // ============================================
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
+      whitelist: true, // Elimina propiedades no definidas en el DTO
+      forbidNonWhitelisted: true, // Lanza error si hay propiedades no permitidas
+      transform: true, // Transforma payloads a instancias de DTO
       transformOptions: {
-        enableImplicitConversion: true,
+        enableImplicitConversion: true, // Convierte tipos automáticamente
       },
     }),
   );
 
-  // Swagger
-  const config = new DocumentBuilder()
+  // ============================================
+  // SWAGGER DOCUMENTATION
+  // ============================================
+  const swaggerConfig = new DocumentBuilder()
     .setTitle('Lettucecurity API')
-    .setDescription('API documentation for Lettucecurity application')
+    .setDescription(
+      'API documentation for Lettucecurity - Sistema de monitoreo de cultivos hidropónicos',
+    )
     .setVersion('1.0')
-    .addTag('lettucecurity')
     .build();
-  const documentFactory = () => SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, documentFactory);
 
-  // Filtros y rate limit
+  const documentFactory = () =>
+    SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api', app, documentFactory, {
+    customSiteTitle: 'Lettucecurity API Docs',
+  });
+
+  // ============================================
+  // GLOBAL EXCEPTION FILTER
+  // ============================================
   app.useGlobalFilters(new AllExceptionsFilter());
-  // app.use(new RateLimitMiddleware().use);
 
-  await app.listen(process.env.PORT ?? 3000);
-  console.log(`API corriendo en http://localhost:${process.env.PORT ?? 3000}`);
+  // ============================================
+  // START SERVER
+  // ============================================
+  const port = process.env.PORT || 3000;
+  await app.listen(port);
+
+  console.log(`
+Servidor corriendo en: http://localhost:${port}       
+Documentación Swagger: http://localhost:${port}/api  
+`);
 }
 
 bootstrap();
