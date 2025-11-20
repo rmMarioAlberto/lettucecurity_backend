@@ -30,16 +30,12 @@ export class AppModule implements NestModule {
     // MIDDLEWARES GLOBALES (DESHABILITADOS)
     // ============================================
     // Para habilitar, descomenta las líneas siguientes:
-    // 1. CORS MIDDLEWARE (Alternativa al enableCors en main.ts)
-    // Usa este middleware si necesitas lógica CORS más personalizada
+    // 1. CORS MIDDLEWARE
     consumer.apply(CorsMiddleware).forRoutes('*');
     // 2. RATE LIMIT MIDDLEWARE
     // Limita el número de peticiones por IP
-    // Configura en .env:
-    //   RATE_LIMIT_WINDOW_MS=60000 (ventana de tiempo en ms)
-    //   RATE_LIMIT_MAX_REQUESTS=100 (máximo de requests por ventana)
     // consumer.apply(RateLimitMiddleware).forRoutes('*');
-    // 3. APLICAR MÚLTIPLES MIDDLEWARES
+    // 3. APLICAR AMBOS MIDDLEWARES
     // consumer
     //   .apply(CorsMiddleware, RateLimitMiddleware)
     //   .forRoutes('*');
