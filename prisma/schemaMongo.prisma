@@ -95,6 +95,8 @@ model parcela_cycles {
   startDate    DateTime
   endDate      DateTime?
 
+  current_stage_index Int
+
   // Etapas reales del ciclo
   stages       CycleStage[]
 }

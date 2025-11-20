@@ -9,6 +9,7 @@ import { ModuleCultivo } from './cultivo/cultivo.module';
 // import { RateLimitMiddleware } from './utils/rate-limit.middleware';
 import { IotControlModule } from './iotControl/iotControl.module';
 import { ChatbotModule } from './chatbot/chatbot.module';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [

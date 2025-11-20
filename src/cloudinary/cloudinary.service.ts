@@ -1,19 +1,12 @@
 import { Injectable, Inject, BadRequestException } from '@nestjs/common';
-import { Cloudinary } from './cloudinary.provider';
+import { CLOUDINARY } from './cloudinary.provider'; // Adjust path if needed
 
 @Injectable()
 export class CloudinaryService {
-  private v2: any;
-
   constructor(
-    @Inject(Cloudinary)
-    private cloudinary,
-  ) {
-    this.cloudinary.v2.config({
-      secure: true,
-    });
-    this.v2 = cloudinary.v2;
-  }
+    @Inject(CLOUDINARY)
+    private v2: any, // This is the configured v2 instance
+  ) {}
 
   async upload(file: any) {
     return await this.v2.uploader.upload(file);
@@ -85,6 +78,8 @@ export class CloudinaryService {
       const uploadResult = await this.v2.uploader.upload(dataUri, options);
       return uploadResult;
     } catch (error) {
+      console.log(error);
+      
       throw new BadRequestException({
         message: 'Error al subir archivo a Cloudinary',
         error: error.message || error,

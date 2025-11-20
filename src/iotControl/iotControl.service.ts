@@ -21,8 +21,6 @@ export class IotControlService {
       where: { id_parcela: idParcela },
       include: { cultivo: true },
     });
-    console.log(parcela);
-    
 
     if (!parcela) {
       throw new BadRequestException('La parcela no existe en el sistema');
@@ -210,11 +208,32 @@ export class IotControlService {
         id_parcela: idParcela,
         endDate: null,
       },
-      select: { id_cycle: true, stages: true },
+      select: { id_cycle: true, stages: true, current_stage_index : true },
     });
 
+    // SI NO EXISTE CICLO → CREAR UNO
     if (!activeCycle) {
-      // Crear ciclo
+      // TRAER ETAPAS BASE DEL CULTIVO
+      const growthStages = await this.prismaMongo.growth_stages.findFirst({
+        where: { cultivo_id: idCultivo },
+      });
+
+      if (!growthStages) {
+        throw new BadRequestException(
+          `No hay etapas definidas para el cultivo ${idCultivo}`,
+        );
+      }
+
+      // MAPEAR ETAPAS INICIALES
+      const mappedStages = growthStages.stages.map((s) => ({
+        stage_index: s.stage_index,
+        stage_name: s.stage_name,
+        startDate: new Date(), // LAS ETAPAS EMPIEZAN AHORA
+        endDate: null,
+        readings: [],
+      }));
+
+      // CREAR EL CICLO REAL
       activeCycle = await this.prismaMongo.parcela_cycles.create({
         data: {
           id_parcela: idParcela,
@@ -222,14 +241,16 @@ export class IotControlService {
           cultivo_id: idCultivo,
           cultivo_name: parcela.cultivo?.nombre ?? 'Desconocido',
           startDate: new Date(),
-          stages: [],
+          endDate: null,
+          current_stage_index: 1,
+          stages: mappedStages,
         },
-        select: { id_cycle: true, stages: true },
+        select: { id_cycle: true, stages: true, current_stage_index : true },
       });
     }
 
     // 4.2 Buscar etapa activa
-    let activeStageIndex = activeCycle.stages.findIndex((s) => !s.endDate);
+    let activeStageIndex = activeCycle.current_stage_index;
 
     if (activeStageIndex === -1) {
       const newStage = {
@@ -254,15 +275,30 @@ export class IotControlService {
     }
 
     // 4.3 Insertar lecturas
-    const stagePath = `stages.${activeStageIndex}.readings`;
 
+    const cycle = await this.prismaMongo.parcela_cycles.findUnique({
+      where: { id_cycle: activeCycle.id_cycle },
+    });
+
+    // Si cycle fuera null (no debería pasar), lanzar error seguro
+    if (!cycle) {
+      throw new BadRequestException(
+        `No se encontró el ciclo activo con id ${activeCycle.id_cycle}`,
+      );
+    }
+
+    // Copia profunda
+    const updatedStages = JSON.parse(JSON.stringify(cycle.stages));
+
+    // Insertar lecturas
+    updatedStages[activeStageIndex].readings.push(...iotReadingsToAdd);
+
+    // Guardar de vuelta
     await this.prismaMongo.parcela_cycles.update({
       where: { id_cycle: activeCycle.id_cycle },
       data: {
-        [stagePath]: {
-          push: JSON.parse(JSON.stringify(iotReadingsToAdd)),
-        },
-      } as any,
+        stages: updatedStages,
+      },
     });
 
     return {
