@@ -61,11 +61,12 @@ export class AccessController {
       userAgent,
     );
 
-    res.cookie('refreshToken', result.refreshToken, {
+    res.cookie('__Host-refreshToken', result.refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: true,
       sameSite: 'strict',
       maxAge: 30 * 60 * 1000,
+      path: '/',
     });
     return {
       statusCode: HttpStatus.OK,
@@ -96,14 +97,19 @@ export class AccessController {
   })
   @HttpCode(HttpStatus.OK)
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const refreshToken = req.cookies['refreshToken'];
+    const refreshToken = req.cookies['__Host-refreshToken'];
 
     if (!refreshToken) {
       throw new UnauthorizedException('Missing refresh token in cookies');
     }
 
     await this.accessService.logoutUser(refreshToken);
-    res.clearCookie('refreshToken');
+    res.clearCookie('__Host-refreshToken', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      path: '/',
+    });
 
     return {
       statusCode: HttpStatus.OK,
@@ -137,16 +143,17 @@ export class AccessController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const refreshToken = req.cookies['refreshToken'];
+    const refreshToken = req.cookies['__Host-refreshToken'];
     if (!refreshToken) {
       throw new UnauthorizedException('Missing refresh token');
     }
     const newTokens = await this.accessService.refreshToken(refreshToken);
-    res.cookie('refreshToken', newTokens.refreshToken, {
+    res.cookie('__Host-refreshToken', newTokens.refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: true, // Siempre true para __Host- prefix
       sameSite: 'strict',
-      maxAge: 30 * 60 * 1000,
+      maxAge: 30 * 60 * 1000, // 30 minutos
+      path: '/', // Obligatorio con __Host-
     });
     return {
       statusCode: HttpStatus.OK,

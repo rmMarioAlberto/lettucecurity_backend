@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaServicePostgres } from '../prisma/prismaPosgres.service';
 import { PrismaServiceMongo } from '../prisma/prismaMongo.service';
 import { ChatbotQueryService } from './chatbotQuery.service';
+import { PredictionService } from '../prediction/prediction.service';
 import axios from 'axios';
 import { GetChatDto } from './dto/chatbot.dto';
 
@@ -18,6 +19,7 @@ export class ChatbotService {
     private readonly prismaPostgres: PrismaServicePostgres,
     private readonly prismaMongo: PrismaServiceMongo,
     private readonly queryService: ChatbotQueryService,
+    private readonly predictionService: PredictionService,
   ) {}
 
   /**
@@ -85,11 +87,13 @@ Consultas permitidas (elige un ID y sus parámetros; siempre opera sobre idParce
 13: Obtener análisis de desviación por sensor (params: {idSensor: number, limit: number = 10}).
 14: Obtener conteo global de statuses (params: ninguno).
 15: Obtener lecturas filtradas por status (params: {targetStatus: string}).
+16: Obtener predicción del clima para 7 días (params: ninguno). Usa modelo LSTM para predecir temperatura y humedad.
 
 Reglas:
 - Nunca pidas datos fuera de la parcela ${idParcela}.
 - Responde solo usando los IDs de consulta válidos.
 - Si el usuario pide algo fuera del alcance, responde que no está permitido por las restricciones del sistema.
+- Para preguntas sobre clima futuro, predicciones, o "cómo estará", usa la consulta 16.
     `;
 
     // Primer prompt: Envía contexto + historial + mensaje del usuario
@@ -155,7 +159,7 @@ ${dbSchemaContext}
                   properties: {
                     id: {
                       type: 'integer',
-                      description: 'ID de la consulta (1-15)',
+                      description: 'ID de la consulta (1-16)',
                     },
                     params: {
                       type: 'object',
@@ -257,12 +261,6 @@ ${dbSchemaContext}
     return reply;
   }
 
-  /**
-   * Ejecuta la consulta basada en ID, siempre con idParcela fijo.
-   * @param queryId ID de la consulta (1-15).
-   * @param idParcela ID fijo de la parcela.
-   * @param params Parámetros adicionales.
-   */
   private async executeQuery(
     queryId: number,
     idParcela: number,
@@ -313,6 +311,17 @@ ${dbSchemaContext}
           idParcela,
           params.targetStatus,
         );
+      case 16:
+        // Predicción del clima usando LSTM
+        try {
+          return await this.predictionService.predictWeather(idParcela);
+        } catch (error) {
+          return {
+            error: 'No hay suficientes datos para hacer una predicción',
+            message:
+              'Se necesitan al menos 7 días de lecturas de temperatura y humedad',
+          };
+        }
       default:
         return null;
     }
@@ -323,6 +332,6 @@ ${dbSchemaContext}
     const historyDoc = await this.prismaMongo.chat_histories.findFirst({
       where: { userId, parcelaId: idParcel },
     });
-    return historyDoc
+    return historyDoc;
   }
 }

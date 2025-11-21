@@ -139,18 +139,31 @@ export class IotControlService {
     });
     const imageUrl = uploadResult.secure_url;
 
-    // Clasificar imagen con IA
+    // Clasificar imagen con IA usando el nuevo endpoint
     let imageResult = 'Desconocido';
+    const ML_API_URL = process.env.ML_API_URL || 'http://localhost:8000';
+    const ML_API_KEY = process.env.ML_API_KEY || 'dev-key-12345';
     try {
       const response = await axios.post(
-        'https://web-production-02772.up.railway.app/predict',
+        `${ML_API_URL}/api/predict/plant-disease`,
         { image },
+        {
+          headers: {
+            'X-API-Key': ML_API_KEY,
+            'Content-Type': 'application/json',
+          },
+        },
       );
 
-      imageResult =
-        response.data.result || JSON.stringify(response.data.prediction);
+      // Extraer resultado según el formato real de respuesta
+      if (response.data.success && response.data.predicted_class) {
+        imageResult = response.data.predicted_class;
+      } else {
+        imageResult = 'Error en clasificación';
+      }
     } catch (error) {
       console.error('Error al clasificar la imagen:', error.message);
+      imageResult = 'Error en clasificación';
     }
 
     return { imageUrl, imageResult };

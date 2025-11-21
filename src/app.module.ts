@@ -8,6 +8,7 @@ import { ModuleCultivo } from './cultivo/cultivo.module';
 import { IotControlModule } from './iotControl/iotControl.module';
 import { ChatbotModule } from './chatbot/chatbot.module';
 import { CronModule } from './cron/cron.module';
+import { PredictionModule } from './prediction/prediction.module';
 import { CorsMiddleware } from './utils/cors.middleware';
 // import { RateLimitMiddleware } from './utils/rate-limit.middleware';
 
@@ -22,6 +23,7 @@ import { CorsMiddleware } from './utils/cors.middleware';
     IotControlModule,
     ChatbotModule,
     CronModule,
+    PredictionModule,
   ],
 })
 export class AppModule implements NestModule {
