@@ -6,6 +6,7 @@ import { AllExceptionsFilter } from './utils/exceptions.filter';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
+import { CryptoInterceptor } from './crypto/crypto.interceptor';
 
 config();
 
@@ -14,6 +15,10 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     bodyParser: false,
   });
+
+  // === ACTIVAR INTERCEPTOR DE CIFRADO GLOBAL ===
+  const cryptoInterceptor = app.get(CryptoInterceptor);
+  app.useGlobalInterceptors(cryptoInterceptor);
 
   // ============================================
   // BODY PARSER
@@ -32,11 +37,11 @@ async function bootstrap() {
   // ============================================
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // Elimina propiedades no definidas en el DTO
-      forbidNonWhitelisted: true, // Lanza error si hay propiedades no permitidas
-      transform: true, // Transforma payloads a instancias de DTO
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
       transformOptions: {
-        enableImplicitConversion: true, // Convierte tipos automáticamente
+        enableImplicitConversion: true,
       },
     }),
   );
