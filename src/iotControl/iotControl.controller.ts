@@ -1,4 +1,11 @@
-import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -16,7 +23,6 @@ import { SkipCrypto } from 'src/crypto/skip-crypto.decorator';
 
 @ApiTags('iot-control')
 @Controller('iot-control')
-@SkipCrypto()
 @UseGuards(AuthIotGuard, RolesGuard)
 @Roles('iot')
 export class IotControlController {
@@ -46,6 +52,6 @@ export class IotControlController {
   async submitData(@Body() dto: SubmitDataDto) {
     const data = await this.iotControlService.submitData(dto);
 
-    return {statusCode : HttpStatus.CREATED, data: data}
+    return { statusCode: HttpStatus.CREATED, data: data };
   }
 }
