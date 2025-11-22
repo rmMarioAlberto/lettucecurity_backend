@@ -16,9 +16,9 @@ async function bootstrap() {
     bodyParser: false,
   });
 
-  // === ACTIVAR INTERCEPTOR DE CIFRADO GLOBAL ===
-  const cryptoInterceptor = app.get(CryptoInterceptor);
-  app.useGlobalInterceptors(cryptoInterceptor);
+  // // === ACTIVAR INTERCEPTOR DE CIFRADO GLOBAL ===
+  // const cryptoInterceptor = app.get(CryptoInterceptor);
+  // app.useGlobalInterceptors(cryptoInterceptor);
 
   // ============================================
   // BODY PARSER

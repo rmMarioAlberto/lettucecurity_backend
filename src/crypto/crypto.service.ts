@@ -85,8 +85,8 @@ export class CryptoService implements OnModuleDestroy {
 
     // 1. Verificar si el nonce ya fue usado (Replay exacto)
     if (entry.seenNonces.has(nonce)) {
-      this.logger.error(
-        `Replay attack detected (duplicate): ${sessionId} (nonce: ${nonce})`,
+      this.logger.warn(
+        `Duplicate nonce detected (likely frontend concurrency): ${sessionId} (nonce: ${nonce})`,
       );
       return false;
     }
