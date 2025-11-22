@@ -135,7 +135,6 @@ export class UpdateCurrentStageDto {
   idParcela: number;
 
   @ApiProperty({ example: 1, description: 'Indice de la etapa actual' })
-  @Min(1)
   @IsNotEmpty()
   @IsNumber()
   stageIndex: number;
