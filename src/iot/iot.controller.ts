@@ -7,11 +7,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { IotService } from './iot.service';
@@ -28,14 +24,14 @@ export class IotController {
   @Post('create')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Crear un nuevo dispositivo IoT' })
-  @ApiResponse({ status: 201, description: 'IoT creado exitosamente'})
+  @ApiResponse({ status: 201, description: 'IoT creado exitosamente' })
   @ApiResponse({ status: 400, description: 'Datos inválidos' })
   async createIot(@Body() dto: CreateIotDto) {
     const newIot = await this.iotService.createIot(dto);
     return {
       statusCode: HttpStatus.CREATED,
       message: 'IoT creado',
-      iot : newIot
+      iot: newIot,
     };
   }
 
@@ -73,14 +69,19 @@ export class IotController {
   @Roles('admin')
   @Post('asignarParcela')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Asignar una parcela a un dispositivo IoT' })
-  @ApiResponse({ status: 200, description: 'Parcela asignada correctamente' })
+  @ApiOperation({
+    summary: 'Asignar una parcela y coordenadas a un dispositivo IoT',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Parcela y coordenadas asignadas correctamente',
+  })
   @ApiResponse({ status: 404, description: 'IoT o parcela no encontrada' })
   async asignarParcela(@Body() dto: AsignarParcelaDto) {
     await this.iotService.asignarParcela(dto);
     return {
       statusCode: HttpStatus.OK,
-      message: 'Parcela asignada al IoT',
+      message: 'Parcela y coordenadas asignadas al IoT',
     };
   }
 

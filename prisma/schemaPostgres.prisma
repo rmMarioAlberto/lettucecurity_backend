@@ -18,15 +18,16 @@ model cultivo {
 }
 
 model iot {
-  id_iot          Int          @id @default(autoincrement())
-  id_parcela      Int?
-  descripcion     String?
-  token           String?      @unique
-  fecha_creacion  DateTime?    @default(now()) @db.Timestamp(6)
-  ultima_conexion DateTime?    @db.Timestamp(6)
-  status          Int          @default(1)
-  parcela         parcela?     @relation(fields: [id_parcela], references: [id_parcela], onDelete: Cascade, onUpdate: NoAction, map: "fk_iot_parcela")
-  sensor_iot      sensor_iot[]
+  id_iot         Int          @id @default(autoincrement())
+  id_parcela     Int?
+  descripcion    String?
+  token          String?      @unique
+  fecha_creacion DateTime?    @default(now()) @db.Timestamp(6)
+  status         Int          @default(1)
+  coordenada_x   Decimal?     @db.Decimal
+  coordenada_y   Decimal?     @db.Decimal
+  parcela        parcela?     @relation(fields: [id_parcela], references: [id_parcela], onDelete: Cascade, onUpdate: NoAction, map: "fk_iot_parcela")
+  sensor_iot     sensor_iot[]
 }
 
 model parcela {
@@ -52,8 +53,17 @@ model sensor {
   modelo          String?          @db.VarChar(50)
   status          Int              @default(1)
   id_category     Int?
-  category        sensor_category? @relation(fields: [id_category], references: [id_category], onDelete: NoAction, onUpdate: NoAction, map: "categoria_id_fs")
+  sensor_category sensor_category? @relation(fields: [id_category], references: [id_category], onDelete: NoAction, onUpdate: NoAction, map: "categoria_id_fs")
   sensor_iot      sensor_iot[]
+}
+
+model sensor_category {
+  id_category Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.VarChar(255)
+  unit        String   @db.VarChar(20)
+  status      Int      @default(1)
+  sensor      sensor[]
 }
 
 model sensor_iot {
@@ -90,13 +100,4 @@ model usuario {
   status       Int       @default(1)
   parcela      parcela[]
   sesion       sesion[]
-}
-
-model sensor_category {
-  id_category Int      @id @default(autoincrement())
-  name        String   @unique @db.VarChar(100)
-  description String?  @db.VarChar(255)
-  unit        String   @db.VarChar(20)
-  status      Int      @default(1)
-  sensors     sensor[]
 }

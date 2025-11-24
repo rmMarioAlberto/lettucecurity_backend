@@ -8,6 +8,7 @@ import {
   CreateCycleDto,
   CreateParcelaDto,
   GetDataParcela,
+  GetIotsParcelaDto,
   GetStageParcela,
   UpdateCurrentStageDto,
 } from './dto/parcela.dto';
@@ -66,7 +67,48 @@ export class ParcelaService {
   }
 
   async getDataParcela(dto: GetDataParcela) {
-    const { idParcela } = dto;
+    const { idParcela, idIots, fechaInicio, fechaFin } = dto;
+
+    // Validar fechas si se proporcionan
+    let startDate: Date | null = null;
+    let endDate: Date | null = null;
+
+    if (fechaInicio && fechaFin) {
+      startDate = new Date(fechaInicio);
+      endDate = new Date(fechaFin);
+
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        throw new BadRequestException('Formato de fecha inválido');
+      }
+
+      if (startDate > endDate) {
+        throw new BadRequestException(
+          'La fecha de inicio debe ser anterior a la fecha de fin',
+        );
+      }
+    } else if (fechaInicio || fechaFin) {
+      throw new BadRequestException(
+        'Debe proporcionar ambas fechas (fechaInicio y fechaFin) o ninguna',
+      );
+    }
+
+    // Validar IoTs si se proporcionan
+    if (idIots && idIots.length > 0) {
+      const validIots = await this.prismaPostgres.iot.findMany({
+        where: {
+          id_parcela: idParcela,
+          id_iot: { in: idIots },
+        },
+      });
+
+      if (validIots.length !== idIots.length) {
+        const foundIds = validIots.map((iot) => iot.id_iot);
+        const notFoundIds = idIots.filter((id) => !foundIds.includes(id));
+        throw new NotFoundException(
+          `IoTs no encontrados en la parcela: ${notFoundIds.join(', ')}`,
+        );
+      }
+    }
 
     const cycle = await this.prismaMongo.parcela_cycles.findFirst({
       where: { id_parcela: idParcela },
@@ -106,40 +148,61 @@ export class ParcelaService {
 
     const sensorMap = new Map(sensors.map((s) => [s.id_sensor, s]));
 
-    // Mapear las etapas con sus lecturas enriquecidas
+    // Mapear las etapas con sus lecturas enriquecidas y filtradas
     const stages = cycle.stages.map((stage) => ({
       stage_index: stage.stage_index,
       stage_name: stage.stage_name,
       startDate: stage.startDate,
       endDate: stage.endDate,
-      readings: stage.readings.map((iotReading) => {
-        const iotInfo = iots.find((i) => i.id_iot === iotReading.id_iot);
+      readings: stage.readings
+        .filter((iotReading) => {
+          // Filtrar por IoTs si se especificaron
+          if (idIots && idIots.length > 0) {
+            if (!idIots.includes(iotReading.id_iot)) {
+              return false;
+            }
+          }
 
-        return {
-          id_iot: iotReading.id_iot,
-          descripcion: iotInfo?.descripcion,
-          hora: iotReading.hora,
-          imagen: iotReading.image_url,
-          image_result: iotReading.image_result,
-          overall_status: iotReading.overall_status,
-          sensores: iotReading.sensorReadings.map((sr) => {
-            const sensor = sensorMap.get(sr.id_sensor);
-            return {
-              id_sensor: sr.id_sensor,
-              lectura: sr.lectura,
-              status: sr.status,
-              deviation: sr.deviation,
-              message: sr.message,
-              nombre: sensor?.nombre,
-              unidad_medicion: sensor?.unidad_medicion,
-              modelo: sensor?.modelo,
-            };
-          }),
-        };
-      }),
+          // Filtrar por fechas si se especificaron
+          if (startDate && endDate) {
+            const readingDate = new Date(iotReading.hora);
+            if (readingDate < startDate || readingDate > endDate) {
+              return false;
+            }
+          }
+
+          return true;
+        })
+        .map((iotReading) => {
+          const iotInfo = iots.find((i) => i.id_iot === iotReading.id_iot);
+
+          return {
+            id_iot: iotReading.id_iot,
+            descripcion: iotInfo?.descripcion,
+            coordenada_x: iotInfo?.coordenada_x,
+            coordenada_y: iotInfo?.coordenada_y,
+            hora: iotReading.hora,
+            imagen: iotReading.image_url,
+            image_result: iotReading.image_result,
+            overall_status: iotReading.overall_status,
+            sensores: iotReading.sensorReadings.map((sr) => {
+              const sensor = sensorMap.get(sr.id_sensor);
+              return {
+                id_sensor: sr.id_sensor,
+                lectura: sr.lectura,
+                status: sr.status,
+                deviation: sr.deviation,
+                message: sr.message,
+                nombre: sensor?.nombre,
+                unidad_medicion: sensor?.unidad_medicion,
+                modelo: sensor?.modelo,
+              };
+            }),
+          };
+        }),
     }));
 
-    return {
+    const response: any = {
       id_parcela: idParcela,
       id_cycle: cycle.id_cycle,
       ciclo_num: cycle.ciclo_num,
@@ -150,6 +213,38 @@ export class ParcelaService {
       current_stage_index: cycle.current_stage_index,
       stages,
     };
+
+    // Agregar información de filtros aplicados
+    if (idIots && idIots.length > 0) {
+      response.filtros_aplicados = {
+        ...response.filtros_aplicados,
+        iots: idIots,
+      };
+    }
+
+    if (fechaInicio && fechaFin) {
+      response.filtros_aplicados = {
+        ...response.filtros_aplicados,
+        fecha_inicio: fechaInicio,
+        fecha_fin: fechaFin,
+      };
+    }
+
+    return response;
+  }
+
+  async getIotsParcela(dto: GetIotsParcelaDto) {
+    const iots = await this.prismaPostgres.iot.findMany({
+      where: { id_parcela: dto.idParcela, status: 1 },
+      include: {
+        sensor_iot: {
+          include: {
+            sensor: true,
+          },
+        },
+      },
+    });
+    return iots;
   }
 
   async getStagePacela(dto: GetStageParcela) {

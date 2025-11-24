@@ -120,11 +120,36 @@ export class EditParcelaDto {
 }
 
 export class GetDataParcela {
-  @ApiPropertyOptional({ example: 1, description: 'ID de la parcela ' })
+  @ApiProperty({ example: 1, description: 'ID de la parcela' })
   @Min(1)
   @IsNotEmpty()
   @IsNumber()
   idParcela: number;
+
+  @ApiPropertyOptional({
+    example: [1, 2, 3],
+    description: 'IDs de IoTs específicos para filtrar (opcional)',
+    type: [Number],
+  })
+  @IsOptional()
+  @IsNumber({}, { each: true })
+  idIots?: number[];
+
+  @ApiPropertyOptional({
+    example: '2025-11-24',
+    description: 'Fecha de inicio para filtrar lecturas (opcional)',
+  })
+  @IsOptional()
+  @IsString()
+  fechaInicio?: string;
+
+  @ApiPropertyOptional({
+    example: '2025-11-24',
+    description: 'Fecha de fin para filtrar lecturas (opcional)',
+  })
+  @IsOptional()
+  @IsString()
+  fechaFin?: string;
 }
 
 export class UpdateCurrentStageDto {
@@ -150,6 +175,14 @@ export class GetStageParcela {
 
 export class CreateCycleDto {
   @ApiProperty({ example: 1, description: 'ID de la parcela ' })
+  @Min(1)
+  @IsNotEmpty()
+  @IsNumber()
+  idParcela: number;
+}
+
+export class GetIotsParcelaDto {
+  @ApiPropertyOptional({ example: 1, description: 'ID de la parcela ' })
   @Min(1)
   @IsNotEmpty()
   @IsNumber()

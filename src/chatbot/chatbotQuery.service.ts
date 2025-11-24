@@ -95,7 +95,6 @@ export class ChatbotQueryService {
         descripcion: true,
         token: true,
         status: true,
-        ultima_conexion: true,
       },
     });
   }

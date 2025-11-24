@@ -1,10 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { 
-  IsNotEmpty, 
-  IsNumber, 
-  IsPositive, 
-  IsString, 
-  IsDateString 
+import {
+  IsNotEmpty,
+  IsNumber,
+  IsPositive,
+  IsString,
+  IsDateString,
 } from 'class-validator';
 
 export class CreateIotDto {
@@ -21,7 +21,7 @@ export class CreateIotDto {
     description: 'Fecha de creación del IoT en formato ISO 8601',
   })
   @IsNotEmpty()
-  @IsDateString() 
+  @IsDateString()
   fechaCreacion: string;
 }
 
@@ -54,4 +54,22 @@ export class AsignarParcelaDto {
   @IsNotEmpty()
   @IsPositive()
   idParcela: number;
+
+  @ApiProperty({
+    example: 1,
+    description: 'Coordenada X del IoT',
+  })
+  @IsNumber()
+  @IsNotEmpty()
+  @IsPositive()
+  coordenadaX: number;
+
+  @ApiProperty({
+    example: 1,
+    description: 'Coordenada Y del IoT',
+  })
+  @IsNumber()
+  @IsNotEmpty()
+  @IsPositive()
+  coordenadaY: number;
 }

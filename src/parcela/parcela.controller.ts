@@ -18,6 +18,7 @@ import {
   CreateCycleDto,
   CreateParcelaDto,
   GetDataParcela,
+  GetIotsParcelaDto,
   GetStageParcela,
   UpdateCurrentStageDto,
 } from './dto/parcela.dto';
@@ -89,12 +90,17 @@ export class ParcelaController {
   @ApiOperation({
     summary: 'Obtener datos completos del ciclo activo de una parcela',
     description:
-      'Recupera información detallada del ciclo de crecimiento más reciente de una parcela, incluyendo todas las etapas con sus lecturas IoT, sensores y estados.',
+      'Recupera información detallada del ciclo de crecimiento más reciente de una parcela, incluyendo todas las etapas con sus lecturas IoT, sensores y estados. Soporta filtros opcionales: idIots (array de IDs de IoT) para filtrar por dispositivos específicos, y fechaInicio/fechaFin para filtrar por rango de fechas.',
   })
   @ApiResponse({
     status: 200,
     description:
-      'Datos del ciclo recuperados correctamente con etapas y lecturas completas',
+      'Datos del ciclo recuperados correctamente con etapas y lecturas completas. Si se aplicaron filtros, se incluirá un campo filtros_aplicados en la respuesta.',
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Formato de fecha inválido, rango de fechas incorrecto, o IoTs no encontrados en la parcela',
   })
   @ApiResponse({
     status: 404,
@@ -197,6 +203,32 @@ export class ParcelaController {
     return {
       statusCode: HttpStatus.CREATED,
       message: 'Ciclo de crecimiento creado correctamente',
+    };
+  }
+
+  @ApiOperation({
+    summary: 'Obtener IoTs asignados a una parcela',
+    description:
+      'Recupera todos los dispositivos IoT activos asignados a una parcela específica, incluyendo sus sensores y coordenadas.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'IoTs obtenidos correctamente con información de sensores',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Parcela no encontrada',
+  })
+  @Roles('admin', 'user')
+  @HttpCode(HttpStatus.OK)
+  @Post('getIotsParcela')
+  async getIotsParcela(@Body() dto: GetIotsParcelaDto) {
+    const iots = await this.parcelasService.getIotsParcela(dto);
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'IoTs de la parcela obtenidos correctamente',
+      data: iots,
     };
   }
 }
