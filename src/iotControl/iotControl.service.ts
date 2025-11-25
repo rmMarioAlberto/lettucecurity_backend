@@ -111,7 +111,7 @@ export class IotControlService {
 
         return {
           id_iot: idIot,
-          hora: new Date(hora),
+          hora: new Date(),
           image_url: imageUrl,
           image_result: imageResult,
           sensorReadings: sensorReadingsWithStatus,
