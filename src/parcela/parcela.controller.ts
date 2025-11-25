@@ -17,6 +17,7 @@ import { ParcelaService } from './parcela.service';
 import {
   CreateCycleDto,
   CreateParcelaDto,
+  EndCycleDto,
   GetDataParcela,
   GetIotsParcelaDto,
   GetStageParcela,
@@ -229,6 +230,33 @@ export class ParcelaController {
       statusCode: HttpStatus.OK,
       message: 'IoTs de la parcela obtenidos correctamente',
       data: iots,
+    };
+  }
+
+  @ApiOperation({
+    summary: 'Finalizar el ciclo de crecimiento activo de una parcela',
+    description:
+      'Termina el ciclo de crecimiento activo de una parcela estableciendo su endDate. También cierra automáticamente la etapa activa actual. Solo puede finalizar un ciclo que esté activo (endDate null).',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Ciclo finalizado correctamente con fecha de cierre y etapa activa cerrada',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'No existe un ciclo activo para la parcela especificada',
+  })
+  @Roles('admin', 'user')
+  @HttpCode(HttpStatus.OK)
+  @Post('endCycle')
+  async endCycle(@Body() dto: EndCycleDto) {
+    const result = await this.parcelasService.endCycle(dto);
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: result.message,
+      data: result.cycle,
     };
   }
 }

@@ -188,3 +188,11 @@ export class GetIotsParcelaDto {
   @IsNumber()
   idParcela: number;
 }
+
+export class EndCycleDto {
+  @ApiProperty({ example: 1, description: 'ID de la parcela' })
+  @Min(1)
+  @IsNotEmpty()
+  @IsNumber()
+  idParcela: number;
+}

@@ -7,6 +7,7 @@ import { PrismaServicePostgres } from '../prisma/prismaPosgres.service';
 import {
   CreateCycleDto,
   CreateParcelaDto,
+  EndCycleDto,
   GetDataParcela,
   GetIotsParcelaDto,
   GetStageParcela,
@@ -397,5 +398,50 @@ export class ParcelaService {
     });
 
     return newCycle;
+  }
+
+  async endCycle(dto: EndCycleDto) {
+    const { idParcela } = dto;
+
+    // Buscar el ciclo activo (endDate es null)
+    const activeCycle = await this.prismaMongo.parcela_cycles.findFirst({
+      where: {
+        id_parcela: idParcela,
+        endDate: null,
+      },
+    });
+
+    if (!activeCycle) {
+      throw new NotFoundException(
+        `No existe un ciclo activo para la parcela ${idParcela}`,
+      );
+    }
+
+    // Copia profunda de las etapas para cerrar la etapa activa
+    const updatedStages = JSON.parse(JSON.stringify(activeCycle.stages));
+
+    // Cerrar la etapa activa si existe
+    if (
+      activeCycle.current_stage_index >= 0 &&
+      activeCycle.current_stage_index < updatedStages.length
+    ) {
+      if (!updatedStages[activeCycle.current_stage_index].endDate) {
+        updatedStages[activeCycle.current_stage_index].endDate = new Date();
+      }
+    }
+
+    // Actualizar el ciclo con la fecha de finalización
+    const closedCycle = await this.prismaMongo.parcela_cycles.update({
+      where: { id_cycle: activeCycle.id_cycle },
+      data: {
+        endDate: new Date(),
+        stages: updatedStages,
+      },
+    });
+
+    return {
+      message: `Ciclo ${closedCycle.ciclo_num} finalizado exitosamente`,
+      cycle: closedCycle,
+    };
   }
 }
